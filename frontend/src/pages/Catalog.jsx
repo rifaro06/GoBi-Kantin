@@ -5,11 +5,13 @@ import { Search, ClipboardList } from 'lucide-react';
 import ProductModal from '../components/ProductModal';
 import FloatingCart from '../components/FloatingCart';
 import { useCart } from '../context/CartContext';
+import { Navigate } from 'react-router-dom';
 
 export default function Catalog() {
     const navigate = useNavigate();
     const [data, setData] = useState({ isCanteenOpen: false, categories: [], classRooms: [] });
     const [loading, setLoading] = useState(true);
+    const [canteenOpen, setCanteenOpen] = useState(true);
     const [activeCategory, setActiveCategory] = useState('');
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [searchMenu, setSearchMenu] = useState('');
@@ -17,14 +19,48 @@ export default function Catalog() {
     const { cartItems = [], addToCart } = useCart();
 
     useEffect(() => {
-        axios.get('http://127.0.0.1:8000/api/catalog')
-            .then(response => {
-                setData(response.data);
-                if (response.data.categories.length > 0) setActiveCategory(response.data.categories[0].name);
-                setLoading(false);
-            })
-            .catch(error => setLoading(false));
-    }, []);
+
+    const loadData = () => {
+
+        Promise.all([
+            axios.get("http://127.0.0.1:8000/api/catalog"),
+            axios.get("http://127.0.0.1:8000/api/settings")
+        ])
+        .then(([catalogRes, settingRes]) => {
+
+            setData(catalogRes.data);
+
+            if (catalogRes.data.categories.length > 0) {
+                setActiveCategory(catalogRes.data.categories[0].name);
+            }
+
+            const settings = settingRes.data.data || {};
+
+            setCanteenOpen(settings.kantin_open === "1");
+
+            if (settings.kantin_open === "1") {
+                sessionStorage.removeItem("teacher_access");
+            }
+
+            setLoading(false);
+
+        })
+        .catch(err => {
+            console.log(err);
+            setLoading(false);
+        });
+
+    };
+
+    // Pertama kali halaman dibuka
+    loadData();
+
+    // Cek perubahan setiap 2 detik
+    const interval = setInterval(loadData, 2000);
+
+    return () => clearInterval(interval);
+
+}, []);
 
     const handleAddToCart = (product, qty = 1, note = '') => {
         // Validasi Maksimal 10 Porsi Makanan
@@ -66,6 +102,11 @@ export default function Catalog() {
     })).filter(category => category.products.length > 0);
 
     if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><p className="font-bold text-emerald-600 animate-pulse">Memuat Menu...</p></div>;
+    const teacherAccess = sessionStorage.getItem("teacher_access");
+
+if (!canteenOpen && teacherAccess !== "1") {
+    return <Navigate to="/closed" replace />;
+}
 
     return (
         <div className="min-h-screen bg-gray-50 font-sans pb-32">

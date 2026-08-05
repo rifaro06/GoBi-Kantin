@@ -15,6 +15,7 @@ import MenusAdmin from './pages/admin/MenusAdmin';
 import UsersAdmin from './pages/admin/UsersAdmin';
 import SettingsAdmin from './pages/admin/SettingsAdmin';
 import LoginAdmin from './pages/admin/LoginAdmin';
+import Closed from "./pages/Closed";
 
 // PASANG PEMBERSIH & PENEMPEL TOKEN OTOMATIS
 axios.interceptors.request.use((config) => {
@@ -33,6 +34,7 @@ export default function App() {
       <Route path="/checkout" element={<Checkout />} />
       <Route path="/track/:id" element={<SuccessTicket />} />
       <Route path="/track" element={<OrderStatus />} />
+      <Route path="/closed" element={<Closed />} />
 
       {/* RUTE LOGIN ADMIN */}
       <Route path="/admin/login" element={<LoginAdmin />} />

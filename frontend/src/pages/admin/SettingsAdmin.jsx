@@ -4,6 +4,9 @@ import { Save, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 
 export default function SettingsAdmin() {
     const [settings, setSettings] = useState({
+        kantin_open: "1",
+        guru_password: "guru123",
+
         max_food_qty: '10',
         food_tier1_fee: '1000',
         food_tier2_fee: '1500',
@@ -103,7 +106,64 @@ export default function SettingsAdmin() {
             )}
 
             <form onSubmit={handleSave} className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 space-y-6">
-                
+
+                <div>
+    <h3 className="font-bold text-slate-700 border-b border-slate-100 pb-2 mb-4">
+        Status Kantin
+    </h3>
+
+    <div className="space-y-4">
+
+        <label className="flex items-center justify-between bg-slate-50 p-4 rounded-xl">
+
+            <div>
+                <p className="font-bold">
+                    Kantin Dibuka
+                </p>
+
+                <p className="text-sm text-slate-500">
+                    Jika dimatikan maka hanya guru yang bisa masuk menggunakan password.
+                </p>
+
+            </div>
+
+            <input
+                type="checkbox"
+                checked={settings.kantin_open === "1"}
+                onChange={(e)=>
+                    setSettings({
+                        ...settings,
+                        kantin_open: e.target.checked ? "1":"0"
+                    })
+                }
+            />
+
+        </label>
+
+
+        <div>
+
+            <label className="text-sm font-bold">
+                Password Guru
+            </label>
+
+            <input
+                type="text"
+                value={settings.guru_password}
+                onChange={(e)=>
+                    setSettings({
+                        ...settings,
+                        guru_password:e.target.value
+                    })
+                }
+                className="w-full px-4 py-2 border rounded-xl mt-2"
+            />
+
+        </div>
+
+    </div>
+
+</div>
                 {/* Makanan */}
                 <div>
                     <h3 className="font-bold text-slate-700 border-b border-slate-100 pb-2 mb-4 text-sm uppercase tracking-wider">Aturan Makanan</h3>
