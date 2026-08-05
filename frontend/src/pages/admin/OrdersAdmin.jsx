@@ -19,7 +19,7 @@ export default function OrdersAdmin() {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`http://localhost:8000/api/admin/orders?date=${selectedDate}`);
+      const response = await axios.get(`/admin/orders?date=${selectedDate}`);
       setOrders(response.data.data);
     } catch (error) {
       console.error('Gagal mengambil data pesanan:', error);
@@ -48,7 +48,7 @@ export default function OrdersAdmin() {
     else return;
 
     try {
-      await axios.patch(`http://localhost:8000/api/admin/orders/${orderId}/status`, {
+      await axios.patch(`/admin/orders/${orderId}/status`, {
         status: nextStatus
       });
       fetchOrders();
@@ -61,7 +61,7 @@ export default function OrdersAdmin() {
 
   const handleLunas = async (orderId) => {
     try {
-      await axios.patch(`http://localhost:8000/api/admin/orders/${orderId}/status`, {
+      await axios.patch(`/admin/orders/${orderId}/status`, {
         payment_status: 'PAID'
       });
       fetchOrders();

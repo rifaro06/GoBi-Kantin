@@ -10,17 +10,24 @@ export default function MenusAdmin() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // State untuk Modal Form (Sudah ditambah description)
+  // State untuk Modal Form
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
     name: '', category_id: '', price: '', description: '', image: '', is_available: true
   });
 
+  // HELPER: Mencegah gambar pecah di HP/device lain & mengganti placeholder rusak
+  const getImageUrl = (url) => {
+    if (!url) return 'https://placehold.co/400x300?text=No+Image';
+    if (typeof url !== 'string') return url;
+    return url.replace(/^http:\/\/(127\.0\.0\.1|localhost):8000/, '');
+  };
+
   const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:8000/api/admin/products');
+      const response = await axios.get('/admin/products');
       setProducts(response.data.data.products);
       setCategories(response.data.data.categories);
     } catch (error) {
@@ -55,7 +62,7 @@ export default function MenusAdmin() {
       name: product.name,
       category_id: product.category_id,
       price: product.price,
-      description: product.description || '', // Pre-fill deskripsi
+      description: product.description || '',
       image: product.image,
       is_available: product.is_available
     });
@@ -66,29 +73,25 @@ export default function MenusAdmin() {
   const handleSave = async (e) => {
     e.preventDefault();
 
-    // Pakai FormData biar bisa ngirim file
     const submitData = new FormData();
     submitData.append('name', formData.name);
     submitData.append('category_id', formData.category_id);
     submitData.append('price', formData.price);
-    submitData.append('description', formData.description || ''); // Append deskripsi
-    // Ubah boolean jadi angka 1/0 karena FormData cuma nerima teks
+    submitData.append('description', formData.description || '');
     submitData.append('is_available', formData.is_available ? 1 : 0);
 
-    // Cek kalau image itu beneran file (bukan cuma link string bawaan database)
     if (formData.image instanceof File) {
       submitData.append('image', formData.image);
     }
 
     try {
       if (editingId) {
-        // TRIK LARAVEL: Buat update file, pakai POST + method PUT
         submitData.append('_method', 'PUT');
-        await axios.post(`http://localhost:8000/api/admin/products/${editingId}`, submitData, {
+        await axios.post(`/admin/products/${editingId}`, submitData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
       } else {
-        await axios.post('http://localhost:8000/api/admin/products', submitData, {
+        await axios.post('/admin/products', submitData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
       }
@@ -104,7 +107,7 @@ export default function MenusAdmin() {
   const handleDelete = async (id) => {
     if (window.confirm('Yakin ingin menghapus menu ini?')) {
       try {
-        await axios.delete(`http://localhost:8000/api/admin/products/${id}`);
+        await axios.delete(`/admin/products/${id}`);
         fetchData();
       } catch (error) {
         alert('Gagal menghapus menu!');
@@ -112,21 +115,54 @@ export default function MenusAdmin() {
     }
   };
 
-  // Toggle status Tersedia / Habis dengan satu klik
+  // Toggle status Tersedia / Habis (DIPERBAIKI: Mengirim seluruh data agar lolos validasi Laravel)
   const toggleAvailability = async (product) => {
     try {
-      await axios.put(`http://localhost:8000/api/admin/products/${product.id}`, {
-        is_available: !product.is_available
+      await axios.put(`/admin/products/${product.id}`, {
+        name: product.name,
+        category_id: product.category_id,
+        price: product.price,
+        description: product.description || '',
+        is_available: !product.is_available ? 1 : 0
       });
       fetchData();
     } catch (error) {
       console.error('Gagal update status:', error);
+      alert('Gagal mengubah status menu!');
     }
   };
 
+  // Filter pencarian
   const filteredProducts = products.filter(p =>
     p.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  /// MENGURUTKAN MENU BERDASARKAN KATEGORI + HARGA (Termurah ke Termahal)
+  const sortedProducts = [...filteredProducts].sort((a, b) => {
+    const catA = a.category?.name || '';
+    const catB = b.category?.name || '';
+
+    // 1. Urutkan berdasarkan Kategori lebih dulu
+    if (catA !== catB) {
+      return catA.localeCompare(catB);
+    }
+
+    // 2. Jika Kategori sama, urutkan berdasarkan Harga (Termurah -> Termahal)
+    const priceA = Number(b.price) || 0;
+    const priceB = Number(a.price) || 0;
+
+    if (priceA !== priceB) {
+      return priceA - priceB;
+    }
+
+    // 3. Jika Harga juga sama, urutkan alfabetis Nama
+    return a.name.localeCompare(b.name);
+  });
+
+  // MENGHILANGKAN KATEGORI GANDA PADA DROPDOWN FORM
+  const uniqueCategories = Array.from(new Set(categories.map(c => c.name))).map(catName => {
+    return categories.find(c => c.name === catName);
+  }).filter(Boolean);
 
   return (
     <div className="flex flex-col h-full bg-slate-50 p-4 lg:p-6 font-sans">
@@ -158,13 +194,17 @@ export default function MenusAdmin() {
         <div className="text-center py-10 text-slate-500 animate-pulse font-medium">Memuat data menu...</div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filteredProducts.map(product => (
+          {sortedProducts.map(product => (
             <div key={product.id} className={`bg-white rounded-2xl border shadow-sm overflow-hidden flex flex-col transition-opacity ${!product.is_available && 'opacity-70 grayscale-50'}`}>
               <div className="h-40 bg-slate-100 relative">
-                <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                <img 
+                  src={getImageUrl(product.image)} 
+                  alt={product.name} 
+                  className="w-full h-full object-cover" 
+                />
                 <button
                   onClick={() => toggleAvailability(product)}
-                  className={`absolute top-2 right-2 px-3 py-1 text-[10px] font-black rounded-full uppercase border backdrop-blur-md ${product.is_available ? 'bg-emerald-500/90 text-white border-emerald-400 hover:bg-emerald-600' : 'bg-rose-500/90 text-white border-rose-400 hover:bg-rose-600'}`}
+                  className={`absolute top-2 right-2 px-3 py-1 text-[10px] font-black rounded-full uppercase border backdrop-blur-md cursor-pointer ${product.is_available ? 'bg-emerald-500/90 text-white border-emerald-400 hover:bg-emerald-600' : 'bg-rose-500/90 text-white border-rose-400 hover:bg-rose-600'}`}
                 >
                   {product.is_available ? 'Tersedia' : 'Habis'}
                 </button>
@@ -213,7 +253,9 @@ export default function MenusAdmin() {
                   <label className="block text-xs font-bold text-slate-500 mb-1">Kategori</label>
                   <select required value={formData.category_id} onChange={e => setFormData({ ...formData, category_id: e.target.value })} className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white">
                     <option value="">Pilih...</option>
-                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    {uniqueCategories.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -222,14 +264,13 @@ export default function MenusAdmin() {
                 </div>
               </div>
 
-              {/* INPUT TEXTAREA DESKRIPSI MENU */}
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1">Deskripsi Menu</label>
                 <textarea
                   rows="3"
                   value={formData.description}
                   onChange={e => setFormData({ ...formData, description: e.target.value })}
-        s          placeholder="Contoh: Nasi padang porsi kenyang lengkap dengan rendang, sayur nangka, dan sambal hijau..."
+                  placeholder="Contoh: Nasi padang porsi kenyang lengkap dengan rendang..."
                   className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-medium resize-none"
                 />
               </div>

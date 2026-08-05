@@ -19,7 +19,7 @@ export default function AdminLayout() {
   const checkNotifications = async () => {
     try {
       // TAMBAHKAN HEADER AUTHORIZATION DI SINI
-      const response = await axios.get('http://localhost:8000/api/admin/orders', {
+      const response = await axios.get('/admin/orders', {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -57,7 +57,7 @@ export default function AdminLayout() {
     if (!window.confirm('Yakin ingin keluar?')) return;
     try {
       // TAMBAHKAN HEADER AUTHORIZATION JUGA SAAT LOGOUT
-      await axios.post('http://localhost:8000/api/logout', {}, {
+      await axios.post('/logout', {}, {
         headers: {
           Authorization: `Bearer ${token}`
         }

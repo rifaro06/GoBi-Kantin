@@ -27,7 +27,7 @@ export default function OrderStatus() {
 
     try {
       // PANGGULAN API BACKEND (Ganti URL sesuai kebutuhan)
-      const response = await axios.get(`http://127.0.0.1:8000/api/orders/track?query=${searchQuery}`);
+      const response = await axios.get(`/orders/track?query=${searchQuery}`);
       setOrders(response.data.data || []);
     } catch (error) {
       console.error("Gagal mengambil data pesanan", error);

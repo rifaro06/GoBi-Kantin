@@ -10,10 +10,17 @@ export default function DashboardAdmin() {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // HELPER: Mencegah Mixed Content & mengganti placeholder rusak
+  const getImageUrl = (url) => {
+    if (!url) return 'https://placehold.co/150?text=No+Image';
+    if (typeof url !== 'string') return url;
+    return url.replace(/^http:\/\/(127\.0\.0\.1|localhost):8000/, '');
+  };
+
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
-        const response = await axios.get('http://localhost:8000/api/admin/dashboard');
+        const response = await axios.get('/admin/dashboard');
         setDashboardData(response.data.data);
       } catch (error) {
         console.error('Gagal mengambil data dashboard:', error);
@@ -106,7 +113,7 @@ export default function DashboardAdmin() {
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-slate-200 rounded-lg overflow-hidden shrink-0">
                     <img 
-                      src={menu.image || 'https://via.placeholder.com/150'} 
+                      src={getImageUrl(menu.image)} 
                       alt={menu.name} 
                       className="w-full h-full object-cover"
                     />

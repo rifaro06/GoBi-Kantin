@@ -24,7 +24,7 @@ export default function SettingsAdmin() {
 
     // TARIK DATA PENGATURAN
     useEffect(() => {
-        axios.get('http://127.0.0.1:8000/api/settings')
+        axios.get('/settings')
             .then(res => {
                 const data = res.data.data || res.data;
                 if (data && typeof data === 'object' && Object.keys(data).length > 0) {
@@ -55,7 +55,7 @@ export default function SettingsAdmin() {
 
         try {
             // Disesuaikan ke endpoint /api/settings agar cocok dengan route Laravel
-            const response = await axios.post('http://127.0.0.1:8000/api/settings', settings);
+            const response = await axios.post('/settings', settings);
             
             setStatusMessage({
                 type: 'success',

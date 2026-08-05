@@ -13,7 +13,7 @@ export default function UsersAdmin() {
 
   const fetchUsers = async () => {
     try {
-      const res = await axios.get('http://localhost:8000/api/admin/users', axiosConfig);
+      const res = await axios.get('/admin/users', axiosConfig);
       setUsers(res.data.data);
     } catch (err) {
       console.error(err);
@@ -29,7 +29,7 @@ export default function UsersAdmin() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:8000/api/admin/users', formData, axiosConfig);
+      await axios.post('/admin/users', formData, axiosConfig);
       alert('Admin berhasil ditambahkan!');
       setIsModalOpen(false);
       setFormData({ name: '', email: '', password: '' });
@@ -42,7 +42,7 @@ export default function UsersAdmin() {
   const handleDelete = async (id) => {
     if (!window.confirm('Yakin ingin menghapus admin ini?')) return;
     try {
-      await axios.delete(`http://localhost:8000/api/admin/users/${id}`, axiosConfig);
+      await axios.delete(`/admin/users/${id}`, axiosConfig);
       fetchUsers();
     } catch (err) {
       alert(err.response?.data?.message || 'Gagal menghapus admin!');

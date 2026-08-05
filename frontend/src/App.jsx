@@ -16,6 +16,9 @@ import UsersAdmin from './pages/admin/UsersAdmin';
 import SettingsAdmin from './pages/admin/SettingsAdmin';
 import LoginAdmin from './pages/admin/LoginAdmin';
 
+// PAKSA AXIOS MENGGUNAKAN PROXY /api (MENGATASI BENTROK CORS & LOCALHOST)
+axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL || '/api';
+
 // PASANG PEMBERSIH & PENEMPEL TOKEN OTOMATIS
 axios.interceptors.request.use((config) => {
   const token = localStorage.getItem('admin_token');

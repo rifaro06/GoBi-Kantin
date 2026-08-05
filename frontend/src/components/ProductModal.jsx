@@ -20,23 +20,30 @@ export default function ProductModal({ product, onClose, onAddToCart }) {
         onAddToCart(product, quantity, note);
     };
 
+    const getImageUrl = (url) => {
+        if (!url) return 'https://placehold.co/400x300?text=No+Image';
+        if (typeof url !== 'string') return url;
+        return url.replace(/^http:\/\/(127\.0\.0\.1|localhost):8000/, '');
+    };
+
     return (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4 transition-opacity">
             <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl relative animate-slide-up">
-                
+
                 {/* Tombol Close */}
-                <button 
-                    onClick={onClose} 
+                <button
+                    onClick={onClose}
                     className="absolute top-4 right-4 z-10 p-2 bg-black/40 text-white rounded-full hover:bg-black/60 transition-colors"
                 >
                     <X className="w-5 h-5" />
                 </button>
 
+
                 {/* Gambar Produk */}
                 <div className="h-48 sm:h-56 bg-slate-100 relative">
-                    <img 
-                        src={product.image || 'https://via.placeholder.com/400'} 
-                        alt={product.name} 
+                    <img
+                        src={getImageUrl(product.image)}
+                        alt={product.name}
                         className="w-full h-full object-cover"
                     />
                 </div>
@@ -56,7 +63,7 @@ export default function ProductModal({ product, onClose, onAddToCart }) {
                     {/* Input Catatan */}
                     <div className="mb-6">
                         <label className="text-xs font-bold text-slate-700 block mb-2">Catatan Pesanan (Opsional)</label>
-                        <textarea 
+                        <textarea
                             rows="2"
                             placeholder="Contoh: Pedas, tanpa bawang, dll"
                             value={note}
@@ -69,14 +76,14 @@ export default function ProductModal({ product, onClose, onAddToCart }) {
                     <div className="flex items-center gap-4 mt-2">
                         {/* Kontrol Quantity */}
                         <div className="flex items-center bg-slate-100 rounded-2xl p-1.5 border border-slate-200">
-                            <button 
+                            <button
                                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
                                 className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-slate-700 shadow-sm hover:bg-slate-50 active:scale-95 transition-all"
                             >
                                 <Minus className="w-4 h-4" />
                             </button>
                             <span className="w-12 text-center font-bold text-base text-slate-800">{quantity}</span>
-                            <button 
+                            <button
                                 onClick={() => setQuantity(quantity + 1)}
                                 className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-slate-700 shadow-sm hover:bg-slate-50 active:scale-95 transition-all"
                             >
@@ -85,7 +92,7 @@ export default function ProductModal({ product, onClose, onAddToCart }) {
                         </div>
 
                         {/* Tombol Tambah ke Keranjang */}
-                        <button 
+                        <button
                             onClick={handleAdd}
                             className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-emerald-600/20 active:scale-95 transition-all"
                         >

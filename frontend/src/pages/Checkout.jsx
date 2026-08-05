@@ -23,7 +23,7 @@ export default function Checkout() {
     const [classRooms, setClassRooms] = useState(location.state?.classRooms || []);
     const [submitting, setSubmitting] = useState(false);
     const [errors, setErrors] = useState({});
-    
+
     // State khusus pesan error per-item produk
     const [itemErrors, setItemErrors] = useState({});
 
@@ -31,6 +31,13 @@ export default function Checkout() {
     const [settings, setSettings] = useState(null);
     const [deliveryFee, setDeliveryFee] = useState(0);
     const [showInfo, setShowInfo] = useState(false);
+
+    // HELPER: Mencegah Mixed Content & Error gambar
+    const getImageUrl = (url) => {
+        if (!url) return 'https://placehold.co/400x300?text=No+Image';
+        if (typeof url !== 'string') return url;
+        return url.replace(/^http:\/\/(127\.0\.0\.1|localhost):8000/, '');
+    };
 
     const [formData, setFormData] = useState(() => {
         const savedData = localStorage.getItem('gobi_checkout_form');
@@ -51,7 +58,7 @@ export default function Checkout() {
 
     useEffect(() => {
         if (classRooms.length === 0) {
-            axios.get('http://127.0.0.1:8000/api/catalog')
+            axios.get('/catalog')
                 .then(res => setClassRooms(res.data.classRooms || []))
                 .catch(err => console.error('Gagal mengambil daftar kelas dari API:', err));
         }
@@ -59,7 +66,7 @@ export default function Checkout() {
 
     // TARIK DATA SETTINGS DARI API
     useEffect(() => {
-        axios.get('http://127.0.0.1:8000/api/settings')
+        axios.get('/settings')
             .then(res => {
                 const data = res.data.data || res.data;
                 if (Array.isArray(data)) {
@@ -90,15 +97,15 @@ export default function Checkout() {
         const foodTier1 = safeNumber(settings?.food_tier1_fee, 1000);
         const foodTier2 = safeNumber(settings?.food_tier2_fee, 1500);
         const foodTier3 = safeNumber(settings?.food_tier3_fee, 2000);
-        
+
         const drinkBaseFee = safeNumber(settings?.drink_base_fee, 0);
         const drinkThreshold = safeNumber(settings?.drink_threshold, 10000);
         const drinkFee = safeNumber(settings?.drink_fee, 1000);
-        
+
         const snackBaseFee = safeNumber(settings?.snack_base_fee, 0);
         const snackThreshold = safeNumber(settings?.snack_threshold, 10000);
         const snackFee = safeNumber(settings?.snack_fee, 1000);
-        
+
         const globalItemMax = safeNumber(settings?.global_item_max, 5);
         const globalMinFee = safeNumber(settings?.global_min_fee, 1500);
 
@@ -111,9 +118,9 @@ export default function Checkout() {
             const qty = safeNumber(item.qty, 1);
             const priceTotal = safeNumber(item.price, 0) * qty;
             totalItems += qty;
-            
-            const cat = String(item.category_name || item.category?.name || '').toLowerCase(); 
-            
+
+            const cat = String(item.category_name || item.category?.name || '').toLowerCase();
+
             if (cat.includes('makan')) {
                 foodQty += qty;
             } else if (cat.includes('minum')) {
@@ -148,6 +155,7 @@ export default function Checkout() {
 
         setDeliveryFee(finalFee);
     }, [cartItems, settings]);
+    
 
     // PROTEKSI PEMESANAN DENGAN NOTIFIKASI DI BAWAH PRODUK
     const handleSafeIncreaseQty = (itemId) => {
@@ -164,7 +172,7 @@ export default function Checkout() {
             });
 
             const maxFoodQty = settings?.max_food_qty ? Number(settings.max_food_qty) : 10;
-            
+
             if (currentFoodQty >= maxFoodQty) {
                 // Set pesan error khusus untuk item ini
                 setItemErrors(prev => ({
@@ -174,7 +182,7 @@ export default function Checkout() {
                 return;
             }
         }
-        
+
         // Bersihkan error jika berhasil tambah
         setItemErrors(prev => ({ ...prev, [itemId]: null }));
         handleIncreaseQty(itemId);
@@ -203,7 +211,7 @@ export default function Checkout() {
         const newErrors = {};
 
         if (!formData.name.trim()) newErrors.name = 'Mohon isi Nama Pemesan terlebih dahulu!';
-        
+
         const cleanPhone = formData.phone.trim();
         if (!cleanPhone) {
             newErrors.phone = 'Mohon isi No. WhatsApp / HP terlebih dahulu!';
@@ -245,7 +253,7 @@ export default function Checkout() {
                 }))
             };
 
-            const response = await axios.post('http://127.0.0.1:8000/api/orders', payload);
+            const response = await axios.post('/orders', payload);
 
             if (clearCart) clearCart();
             localStorage.removeItem('gobi_checkout_form');
@@ -297,7 +305,7 @@ export default function Checkout() {
                     </div>
                 ) : (
                     <form onSubmit={handleSubmit} noValidate className="space-y-6">
-                        
+
                         {/* INFORMASI PENGANTARAN */}
                         <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-200 space-y-4">
                             <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -348,7 +356,12 @@ export default function Checkout() {
                                     return (
                                         <div key={itemId} className="flex flex-col border-b border-slate-100 last:border-0 pb-3 last:pb-0">
                                             <div className="flex gap-3 items-center">
-<img src={item.image || 'https://via.placeholder.com/400'} alt={item.name} className="w-14 h-14 rounded-2xl object-cover bg-slate-100 border border-slate-200 shrink-0" />                                                <div className="flex-1 min-w-0">
+                                                <img 
+                                                    src={getImageUrl(item.image)} 
+                                                    alt={item.name} 
+                                                    className="w-14 h-14 rounded-2xl object-cover bg-slate-100 border border-slate-200 shrink-0" 
+                                                />
+                                                <div className="flex-1 min-w-0">
                                                     <h4 className="font-bold text-slate-800 text-sm truncate">{item.name}</h4>
                                                     <p className="text-xs font-semibold text-emerald-600 mt-0.5">Rp {Number(item.price).toLocaleString('id-ID')}</p>
                                                 </div>
