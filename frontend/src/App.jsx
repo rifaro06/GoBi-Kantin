@@ -15,6 +15,7 @@ import MenusAdmin from './pages/admin/MenusAdmin';
 import UsersAdmin from './pages/admin/UsersAdmin';
 import SettingsAdmin from './pages/admin/SettingsAdmin';
 import LoginAdmin from './pages/admin/LoginAdmin';
+import Closed from './pages/Closed';
 
 // PAKSA AXIOS MENGGUNAKAN PROXY /api (MENGATASI BENTROK CORS & LOCALHOST)
 axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL || '/api';
@@ -36,6 +37,7 @@ export default function App() {
       <Route path="/checkout" element={<Checkout />} />
       <Route path="/track/:id" element={<SuccessTicket />} />
       <Route path="/track" element={<OrderStatus />} />
+      <Route path="/closed" element={<Closed />} />
 
       {/* RUTE LOGIN ADMIN */}
       <Route path="/admin/login" element={<LoginAdmin />} />
