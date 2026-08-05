@@ -214,7 +214,7 @@ export default function MenusAdmin() {
                 <h3 className="font-bold text-slate-800 text-sm leading-tight mb-1">{product.name}</h3>
                 
                 {/* PREVIEW DESKRIPSI DI CARD */}
-                <p className="text-xs text-slate-400 line-clamp-2 mb-3 min-h-[2rem]">
+                <p className="text-xs text-slate-400 line-clamp-2 mb-3 min-h-8">
                   {product.description || 'Tidak ada deskripsi'}
                 </p>
 

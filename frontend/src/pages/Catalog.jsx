@@ -22,6 +22,48 @@ export default function Catalog() {
         return url.replace(/^http:\/\/(127\.0\.0\.1|localhost):8000/, '');
     };
 
+    // 1. POLLING OTOMATIS: Cek Status Kantin Setiap 3 Detik
+    useEffect(() => {
+        const checkStatus = async () => {
+            const isTeacher = sessionStorage.getItem("teacher_access") === "1";
+
+            try {
+                const res = await axios.get('/settings');
+                const rawData = res.data.data || res.data || {};
+                
+                let settings = {};
+                if (Array.isArray(rawData)) {
+                    rawData.forEach(item => { settings[item.key] = item.value; });
+                } else if (typeof rawData === 'object') {
+                    settings = { ...rawData };
+                }
+
+                const isOpen = settings.kantin_open == 1 || settings.kantin_open === "1" || settings.kantin_open === true;
+
+                // Jika Kantin BUKA -> Reset akses guru (agar jika nanti ditutup lagi, guru harus isi password ulang)
+                if (isOpen && isTeacher) {
+                    sessionStorage.removeItem("teacher_access");
+                }
+
+                // 🛑 JIKA KANTIN TUTUP & BUKAN GURU -> OTOMATIS LEMPAR KE /closed
+                if (!isOpen && !isTeacher) {
+                    navigate('/closed', { replace: true });
+                }
+            } catch (err) {
+                console.error("Gagal mengecek status kantin:", err);
+            }
+        };
+
+        // Jalankan saat pertama kali halaman dibuka
+        checkStatus();
+
+        // Cek secara berkala setiap 3 detik (Auto-lock saat admin mematikan kantin)
+        const interval = setInterval(checkStatus, 3000);
+
+        return () => clearInterval(interval);
+    }, [navigate]);
+
+    // 2. AMBIL DATA KATALOG
     useEffect(() => {
         axios.get('/catalog')
             .then(response => {
@@ -30,9 +72,9 @@ export default function Catalog() {
                 if (resData.categories && resData.categories.length > 0) {
                     setActiveCategory(resData.categories[0].name);
                 }
-                setLoading(false);
             })
-            .catch(() => setLoading(false));
+            .catch(err => console.error("Gagal memuat catalog:", err))
+            .finally(() => setLoading(false));
     }, []);
 
     const handleAddToCart = (product, qty = 1, note = '') => {
@@ -107,7 +149,6 @@ export default function Catalog() {
 
                 {/* Header Banner */}
                 <div className="relative h-44 bg-emerald-900">
-                    {/* Mengambil langsung dari folder public/assets/ */}
                     <img 
                         src="/assets/Benner.png" 
                         alt="Banner" 

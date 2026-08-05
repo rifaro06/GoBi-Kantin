@@ -6,7 +6,6 @@ export default function SettingsAdmin() {
     const [settings, setSettings] = useState({
         kantin_open: "1",
         guru_password: "guru123",
-
         max_food_qty: '10',
         food_tier1_fee: '1000',
         food_tier2_fee: '1500',
@@ -25,14 +24,29 @@ export default function SettingsAdmin() {
     const [fetching, setFetching] = useState(true);
     const [statusMessage, setStatusMessage] = useState({ type: '', text: '' });
 
-    // TARIK DATA PENGATURAN
+    // Tarik data pengaturan dari API
     useEffect(() => {
         axios.get('/settings')
             .then(res => {
-                const data = res.data.data || res.data;
-                if (data && typeof data === 'object' && Object.keys(data).length > 0) {
-                    setSettings(prev => ({ ...prev, ...data }));
+                const rawData = res.data.data || res.data;
+                let normalizedData = {};
+
+                // Penanganan jika API mengembalikan Array [{key: '...', value: '...'}] atau Object
+                if (Array.isArray(rawData)) {
+                    rawData.forEach(item => {
+                        if (item.key) normalizedData[item.key] = item.value;
+                    });
+                } else if (rawData && typeof rawData === 'object') {
+                    normalizedData = { ...rawData };
                 }
+
+                // Normalisasi status kantin_open ke string "1" atau "0"
+                if (normalizedData.kantin_open !== undefined) {
+                    const isOpen = normalizedData.kantin_open == 1 || normalizedData.kantin_open === "1" || normalizedData.kantin_open === true;
+                    normalizedData.kantin_open = isOpen ? "1" : "0";
+                }
+
+                setSettings(prev => ({ ...prev, ...normalizedData }));
             })
             .catch(err => {
                 console.error('Gagal mengambil pengaturan:', err);
@@ -44,25 +58,30 @@ export default function SettingsAdmin() {
             .finally(() => setFetching(false));
     }, []);
 
+    // Handler umum untuk perubahan input teks/angka
     const handleChange = (e) => {
-        setSettings({ ...settings, [e.target.name]: e.target.value });
-        // Sembunyikan notifikasi saat user mulai mengetik lagi
+        const { name, value } = e.target;
+        setSettings(prev => ({ ...prev, [name]: value }));
         if (statusMessage.text) setStatusMessage({ type: '', text: '' });
     };
 
-    // SIMPAN PENGATURAN
+    // Simpan Pengaturan
     const handleSave = async (e) => {
         e.preventDefault();
         setLoading(true);
         setStatusMessage({ type: '', text: '' });
 
         try {
-            // Disesuaikan ke endpoint /api/settings agar cocok dengan route Laravel
             const response = await axios.post('/settings', settings);
-            
+
+            // Jika kantin dimatikan, hapus token login guru lokal agar pengujian langsung terkunci
+            if (settings.kantin_open === "0") {
+                sessionStorage.removeItem("teacher_access");
+            }
+
             setStatusMessage({
                 type: 'success',
-                text: response.data.message || 'Pengaturan berhasil disimpan!'
+                text: response.data?.message || 'Pengaturan berhasil disimpan!'
             });
         } catch (error) {
             console.error('Gagal menyimpan pengaturan:', error);
@@ -87,9 +106,9 @@ export default function SettingsAdmin() {
 
     return (
         <div className="p-4 lg:p-6 font-sans max-w-4xl">
-            <h2 className="text-2xl font-extrabold text-slate-800 mb-6">Pengaturan Ongkos Kirim Kantin</h2>
+            <h2 className="text-2xl font-extrabold text-slate-800 mb-6">Pengaturan Kantin</h2>
             
-            {/* NOTIFIKASI SUKSES / ERROR */}
+            {/* Status Notifikasi */}
             {statusMessage.text && (
                 <div className={`mb-6 p-4 rounded-2xl flex items-center gap-3 text-sm font-bold shadow-sm transition-all ${
                     statusMessage.type === 'success' 
@@ -107,142 +126,143 @@ export default function SettingsAdmin() {
 
             <form onSubmit={handleSave} className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 space-y-6">
 
+                {/* Status Kantin & Password Guru */}
                 <div>
-    <h3 className="font-bold text-slate-700 border-b border-slate-100 pb-2 mb-4">
-        Status Kantin
-    </h3>
+                    <h3 className="font-bold text-slate-700 border-b border-slate-100 pb-2 mb-4 text-sm uppercase tracking-wider">
+                        Status Kantin
+                    </h3>
 
-    <div className="space-y-4">
+                    <div className="space-y-4">
+                        <label className="flex items-center justify-between bg-slate-50 p-4 rounded-xl cursor-pointer hover:bg-slate-100/80 transition-colors">
+                            <div>
+                                <p className="font-bold text-slate-800">Kantin Dibuka</p>
+                                <p className="text-sm text-slate-500">
+                                    Jika dimatikan maka hanya guru yang bisa masuk menggunakan password.
+                                </p>
+                            </div>
 
-        <label className="flex items-center justify-between bg-slate-50 p-4 rounded-xl">
+                            <input
+                                type="checkbox"
+                                className="w-5 h-5 accent-emerald-600 rounded cursor-pointer"
+                                checked={settings.kantin_open === "1"}
+                                onChange={(e) => {
+                                    setSettings(prev => ({
+                                        ...prev,
+                                        kantin_open: e.target.checked ? "1" : "0"
+                                    }));
+                                    if (statusMessage.text) setStatusMessage({ type: '', text: '' });
+                                }}
+                            />
+                        </label>
 
-            <div>
-                <p className="font-bold">
-                    Kantin Dibuka
-                </p>
+                        <div>
+                            <label className="text-sm font-bold text-slate-700 block mb-1">
+                                Password Guru
+                            </label>
+                            <input
+                                type="text"
+                                name="guru_password"
+                                value={settings.guru_password || ''}
+                                onChange={handleChange}
+                                className="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-slate-50 focus:bg-white transition-all"
+                            />
+                        </div>
+                    </div>
+                </div>
 
-                <p className="text-sm text-slate-500">
-                    Jika dimatikan maka hanya guru yang bisa masuk menggunakan password.
-                </p>
-
-            </div>
-
-            <input
-                type="checkbox"
-                checked={settings.kantin_open === "1"}
-                onChange={(e)=>
-                    setSettings({
-                        ...settings,
-                        kantin_open: e.target.checked ? "1":"0"
-                    })
-                }
-            />
-
-        </label>
-
-
-        <div>
-
-            <label className="text-sm font-bold">
-                Password Guru
-            </label>
-
-            <input
-                type="text"
-                value={settings.guru_password}
-                onChange={(e)=>
-                    setSettings({
-                        ...settings,
-                        guru_password:e.target.value
-                    })
-                }
-                className="w-full px-4 py-2 border rounded-xl mt-2"
-            />
-
-        </div>
-
-    </div>
-
-</div>
-                {/* Makanan */}
+                {/* Aturan Makanan */}
                 <div>
-                    <h3 className="font-bold text-slate-700 border-b border-slate-100 pb-2 mb-4 text-sm uppercase tracking-wider">Aturan Makanan</h3>
+                    <h3 className="font-bold text-slate-700 border-b border-slate-100 pb-2 mb-4 text-sm uppercase tracking-wider">
+                        Aturan Makanan
+                    </h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div>
                             <label className="text-xs font-bold text-slate-500 block mb-1">Maks. Porsi</label>
-                            <input type="number" name="max_food_qty" value={settings.max_food_qty} onChange={handleChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                            <input type="number" name="max_food_qty" value={settings.max_food_qty || ''} onChange={handleChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                         </div>
                         <div>
                             <label className="text-xs font-bold text-slate-500 block mb-1">Fee 1-2 Porsi (Rp)</label>
-                            <input type="number" name="food_tier1_fee" value={settings.food_tier1_fee} onChange={handleChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                            <input type="number" name="food_tier1_fee" value={settings.food_tier1_fee || ''} onChange={handleChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                         </div>
                         <div>
                             <label className="text-xs font-bold text-slate-500 block mb-1">Fee 3-5 Porsi (Rp)</label>
-                            <input type="number" name="food_tier2_fee" value={settings.food_tier2_fee} onChange={handleChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                            <input type="number" name="food_tier2_fee" value={settings.food_tier2_fee || ''} onChange={handleChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                         </div>
                         <div>
                             <label className="text-xs font-bold text-slate-500 block mb-1">Fee 6-10 Porsi (Rp)</label>
-                            <input type="number" name="food_tier3_fee" value={settings.food_tier3_fee} onChange={handleChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                            <input type="number" name="food_tier3_fee" value={settings.food_tier3_fee || ''} onChange={handleChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                         </div>
                     </div>
                 </div>
 
-                {/* Minuman */}
+                {/* Aturan Minuman */}
                 <div>
-                    <h3 className="font-bold text-slate-700 border-b border-slate-100 pb-2 mb-4 text-sm uppercase tracking-wider">Aturan Minuman</h3>
+                    <h3 className="font-bold text-slate-700 border-b border-slate-100 pb-2 mb-4 text-sm uppercase tracking-wider">
+                        Aturan Minuman
+                    </h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label className="text-xs font-bold text-slate-500 block mb-1">Fee Dasar (Rp)</label>
-                            <input type="number" name="drink_base_fee" value={settings.drink_base_fee} onChange={handleChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                            <input type="number" name="drink_base_fee" value={settings.drink_base_fee || ''} onChange={handleChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                         </div>
                         <div>
                             <label className="text-xs font-bold text-slate-500 block mb-1">Batas Harga Naik (Rp)</label>
-                            <input type="number" name="drink_threshold" value={settings.drink_threshold} onChange={handleChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                            <input type="number" name="drink_threshold" value={settings.drink_threshold || ''} onChange={handleChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                         </div>
                         <div>
                             <label className="text-xs font-bold text-slate-500 block mb-1">Fee Saat Tembus (Rp)</label>
-                            <input type="number" name="drink_fee" value={settings.drink_fee} onChange={handleChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                            <input type="number" name="drink_fee" value={settings.drink_fee || ''} onChange={handleChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                         </div>
                     </div>
                 </div>
 
-                {/* Snack */}
+                {/* Aturan Snack */}
                 <div>
-                    <h3 className="font-bold text-slate-700 border-b border-slate-100 pb-2 mb-4 text-sm uppercase tracking-wider">Aturan Snack</h3>
+                    <h3 className="font-bold text-slate-700 border-b border-slate-100 pb-2 mb-4 text-sm uppercase tracking-wider">
+                        Aturan Snack
+                    </h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label className="text-xs font-bold text-slate-500 block mb-1">Fee Dasar (Rp)</label>
-                            <input type="number" name="snack_base_fee" value={settings.snack_base_fee} onChange={handleChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                            <input type="number" name="snack_base_fee" value={settings.snack_base_fee || ''} onChange={handleChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                         </div>
                         <div>
                             <label className="text-xs font-bold text-slate-500 block mb-1">Batas Harga Naik (Rp)</label>
-                            <input type="number" name="snack_threshold" value={settings.snack_threshold} onChange={handleChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                            <input type="number" name="snack_threshold" value={settings.snack_threshold || ''} onChange={handleChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                         </div>
                         <div>
                             <label className="text-xs font-bold text-slate-500 block mb-1">Fee Saat Tembus (Rp)</label>
-                            <input type="number" name="snack_fee" value={settings.snack_fee} onChange={handleChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                            <input type="number" name="snack_fee" value={settings.snack_fee || ''} onChange={handleChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                         </div>
                     </div>
                 </div>
 
-                {/* Global */}
+                {/* Aturan Global */}
                 <div>
-                    <h3 className="font-bold text-slate-700 border-b border-slate-100 pb-2 mb-4 text-sm uppercase tracking-wider">Aturan Global (Min. 1 Makanan)</h3>
+                    <h3 className="font-bold text-slate-700 border-b border-slate-100 pb-2 mb-4 text-sm uppercase tracking-wider">
+                        Aturan Global (Min. 1 Makanan)
+                    </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="text-xs font-bold text-slate-500 block mb-1">Batas Total Item (Semua Kategori)</label>
-                            <input type="number" name="global_item_max" value={settings.global_item_max} onChange={handleChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                            <input type="number" name="global_item_max" value={settings.global_item_max || ''} onChange={handleChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                         </div>
                         <div>
                             <label className="text-xs font-bold text-slate-500 block mb-1">Fee Minimum Jika Lewat Batas (Rp)</label>
-                            <input type="number" name="global_min_fee" value={settings.global_min_fee} onChange={handleChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                            <input type="number" name="global_min_fee" value={settings.global_min_fee || ''} onChange={handleChange} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                         </div>
                     </div>
                 </div>
 
+                {/* Tombol Simpan */}
                 <div className="pt-4 border-t border-slate-100 text-right">
-                    <button type="submit" disabled={loading} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-3 rounded-xl flex items-center gap-2 ml-auto transition-colors text-sm disabled:opacity-50 shadow-md shadow-emerald-600/20">
-                        <Save className="w-5 h-5" /> {loading ? 'Menyimpan...' : 'Simpan Pengaturan'}
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-3 rounded-xl flex items-center gap-2 ml-auto transition-colors text-sm disabled:opacity-50 shadow-md shadow-emerald-600/20 cursor-pointer"
+                    >
+                        <Save className="w-5 h-5" />
+                        {loading ? 'Menyimpan...' : 'Simpan Pengaturan'}
                     </button>
                 </div>
             </form>

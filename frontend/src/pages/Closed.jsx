@@ -1,92 +1,99 @@
 import { useState, useEffect } from "react";
-import { Navigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
 export default function Closed() {
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
-    const [allowed, setAllowed] = useState(false);
+    const navigate = useNavigate();
 
     useEffect(() => {
+        const loadSettings = () => {
+            axios.get("/settings")
+                .then(res => {
+                    const rawData = res.data.data || res.data || {};
+                    let normalized = {};
 
-    const loadSettings = () => {
+                    if (Array.isArray(rawData)) {
+                        rawData.forEach(item => { normalized[item.key] = item.value; });
+                    } else if (typeof rawData === 'object') {
+                        normalized = { ...rawData };
+                    }
 
-        axios.get("http://127.0.0.1:8000/api/settings")
-            .then(res => {
+                    const isOpen = normalized.kantin_open == 1 || normalized.kantin_open === "1" || normalized.kantin_open === true;
 
-                const settings = res.data.data || {};
+                    // Jika kantin dibuka kembali oleh admin, kembalikan user ke katalog
+                    if (isOpen) {
+                        navigate("/");
+                    }
+                })
+                .catch(err => console.error("Error checking canteen status:", err));
+        };
 
-                if (settings.kantin_open === "1") {
-                    window.location.href = "/";
-                }
+        loadSettings();
+        const interval = setInterval(loadSettings, 3000);
 
-            });
-
-    };
-
-    loadSettings();
-
-    const interval = setInterval(loadSettings, 2000);
-
-    return () => clearInterval(interval);
-
-}, []);
+        return () => clearInterval(interval);
+    }, [navigate]);
 
     const handleLogin = async () => {
+        setError("");
         try {
-            const res = await axios.get("http://127.0.0.1:8000/api/settings");
+            // Gunakan URL relatif /settings (mengikuti proxy Axios) agar bebas CORS Ngrok
+            const res = await axios.get("/settings");
+            const rawData = res.data.data || res.data || {};
 
-            const settings = res.data.data;
-
-            if (password === settings.guru_password) {
-                sessionStorage.setItem("teacher_access", "1");
-    setAllowed(true);
-            } else {
-    setError("Password guru salah.");
+            let normalized = {};
+            if (Array.isArray(rawData)) {
+                rawData.forEach(item => { normalized[item.key] = item.value; });
+            } else if (typeof rawData === 'object') {
+                normalized = { ...rawData };
             }
-        } catch {
+
+            if (password === normalized.guru_password) {
+                sessionStorage.setItem("teacher_access", "1");
+                navigate("/");
+            } else {
+                setError("Password guru salah.");
+            }
+        } catch (err) {
+            console.error(err);
             setError("Server tidak dapat dihubungi.");
         }
     };
 
-    if (allowed) {
-        sessionStorage.setItem("teacher_access", "1");
-        return <Navigate to="/" replace />;
-    }
-
     return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-100">
-            <div className="bg-white rounded-3xl shadow-xl p-8 w-96">
-
-                <h1 className="text-2xl font-bold mb-2">
+        <div className="min-h-screen flex items-center justify-center bg-slate-100 font-sans p-4">
+            <div className="bg-white rounded-3xl shadow-xl p-8 w-full max-w-sm border border-slate-100">
+                <h1 className="text-2xl font-bold mb-2 text-slate-800">
                     Kantin Sedang Ditutup
                 </h1>
 
-                <p className="text-slate-500 mb-6">
+                <p className="text-slate-500 text-sm mb-6 leading-relaxed">
                     Pemesanan hanya dapat dilakukan saat kantin dibuka.
                 </p>
 
                 <input
                     type="password"
-                    placeholder="Password Guru"
+                    placeholder="Masukkan Password Guru"
                     value={password}
-                    onChange={(e)=>setPassword(e.target.value)}
-                    className="border rounded-xl w-full p-3"
+                    onChange={(e) => setPassword(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                    className="border border-slate-200 rounded-xl w-full p-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 />
 
                 {error && (
-                    <p className="text-red-500 text-sm mt-3">
+                    <p className="text-rose-500 font-medium text-xs mt-3">
                         {error}
                     </p>
                 )}
 
                 <button
                     onClick={handleLogin}
-                    className="mt-5 w-full bg-emerald-600 text-white rounded-xl py-3"
+                    className="mt-5 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl py-3 text-sm transition-colors shadow-md shadow-emerald-600/20"
                 >
                     Masuk Sebagai Guru
                 </button>
-
             </div>
         </div>
     );
