@@ -76,7 +76,7 @@ export default function AdminLayout() {
     { path: '/admin/orders', icon: <ShoppingCart className="w-5 h-5" />, label: 'Pesanan Masuk' },
     { path: '/admin/menus', icon: <ChefHat className="w-5 h-5" />, label: 'Kelola Menu' },
     { path: '/admin/users', icon: <Users className="w-5 h-5" />, label: 'Kelola Admin' },
-    { path: '/admin/settings', icon: <Settings className="w-5 h-5" />, label: 'Pengaturan Ongkir' },
+    { path: '/admin/settings', icon: <Settings className="w-5 h-5" />, label: 'Pengaturan' },
   ];
 
   return (

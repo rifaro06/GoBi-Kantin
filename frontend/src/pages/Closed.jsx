@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { ClipboardList, ShieldCheck } from "lucide-react"; // Import ikon
 
 export default function Closed() {
     const [password, setPassword] = useState("");
@@ -22,7 +23,6 @@ export default function Closed() {
 
                     const isOpen = normalized.kantin_open == 1 || normalized.kantin_open === "1" || normalized.kantin_open === true;
 
-                    // Jika kantin dibuka kembali oleh admin, kembalikan user ke katalog
                     if (isOpen) {
                         navigate("/");
                     }
@@ -39,7 +39,6 @@ export default function Closed() {
     const handleLogin = async () => {
         setError("");
         try {
-            // Gunakan URL relatif /settings (mengikuti proxy Axios) agar bebas CORS Ngrok
             const res = await axios.get("/settings");
             const rawData = res.data.data || res.data || {};
 
@@ -70,30 +69,55 @@ export default function Closed() {
                 </h1>
 
                 <p className="text-slate-500 text-sm mb-6 leading-relaxed">
-                    Pemesanan hanya dapat dilakukan saat kantin dibuka.
+                    Pemesanan baru tidak dapat dilakukan saat kantin tutup.
                 </p>
 
-                <input
-                    type="password"
-                    placeholder="Masukkan Password Guru"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-                    className="border border-slate-200 rounded-xl w-full p-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                />
-
-                {error && (
-                    <p className="text-rose-500 font-medium text-xs mt-3">
-                        {error}
+                {/* AKSES LACAK PESANAN UNTUK SISWA */}
+                <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200/80 rounded-2xl space-y-2">
+                    <p className="text-xs font-bold text-emerald-900">
+                        Sudah pesan sebelum kantin tutup?
                     </p>
-                )}
+                    <p className="text-[11px] text-emerald-700 leading-snug">
+                        Kamu tetap bisa mengecek status pengantaran makanan atau bayar QRIS.
+                    </p>
+                    <button
+                        onClick={() => navigate('/track')}
+                        className="mt-2 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl py-2.5 text-xs transition-colors shadow-sm flex items-center justify-center gap-2"
+                    >
+                        <ClipboardList className="w-4 h-4" />
+                        Lacak Status Pesanan Saya
+                    </button>
+                </div>
 
-                <button
-                    onClick={handleLogin}
-                    className="mt-5 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl py-3 text-sm transition-colors shadow-md shadow-emerald-600/20"
-                >
-                    Masuk Sebagai Guru
-                </button>
+                <hr className="border-slate-100 my-5" />
+
+                {/* FORM LOGIN GURU */}
+                <div className="space-y-3">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                        <ShieldCheck className="w-4 h-4 text-slate-500" /> Akses Khusus Guru
+                    </label>
+                    <input
+                        type="password"
+                        placeholder="Masukkan Password Guru"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                        className="border border-slate-200 rounded-xl w-full p-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    />
+
+                    {error && (
+                        <p className="text-rose-500 font-medium text-xs">
+                            {error}
+                        </p>
+                    )}
+
+                    <button
+                        onClick={handleLogin}
+                        className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl py-3 text-sm transition-colors shadow-md"
+                    >
+                        Masuk Sebagai Guru
+                    </button>
+                </div>
             </div>
         </div>
     );

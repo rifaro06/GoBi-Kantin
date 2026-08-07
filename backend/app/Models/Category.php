@@ -9,11 +9,10 @@ class Category extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'sort_order'];
+    protected $guarded = ['id'];
 
-    // Relasi ini wajib ada agar data produk bisa ditarik
     public function products()
     {
-        return $this->hasMany(Product::class);
+        return $this->hasMany(Product::class, 'category_id', 'id');
     }
 }

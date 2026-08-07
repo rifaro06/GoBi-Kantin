@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
   CheckCircle2, Clock, ChefHat, Bike, Search, User,
-  MapPin, X, Phone, Receipt, Banknote, Wallet, Calendar
+  MapPin, X, Phone, Receipt, Banknote, Wallet, Calendar, Trash2
 } from 'lucide-react';
 
 export default function OrdersAdmin() {
@@ -12,15 +12,16 @@ export default function OrdersAdmin() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
 
-  // State baru untuk filter tanggal (Default: Hari Ini YYYY-MM-DD)
+  // Filter Periode State
+  const [period, setPeriod] = useState('today'); // 'today' | '7days' | '30days' | 'custom'
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // Fetch data sekarang bawa parameter tanggal
+  // Fetch data pesanan
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`/admin/orders?date=${selectedDate}`);
-      setOrders(response.data.data);
+      const response = await axios.get(`/admin/orders?period=${period}&date=${selectedDate}`);
+      setOrders(response.data.data || []);
     } catch (error) {
       console.error('Gagal mengambil data pesanan:', error);
     } finally {
@@ -28,17 +29,15 @@ export default function OrdersAdmin() {
     }
   };
 
-  // Otomatis nge-fetch data ulang kalau selectedDate berubah
   useEffect(() => {
-    fetchOrders(); // Load data pertama
+    fetchOrders();
 
-    // Auto refresh setiap 15 detik
     const interval = setInterval(() => {
       fetchOrders();
-    }, 15000); // <-- 15 detik
+    }, 15000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [period, selectedDate]);
 
   const handleUpdateStatus = async (orderId, currentStatus) => {
     let nextStatus = '';
@@ -71,6 +70,25 @@ export default function OrdersAdmin() {
     }
   };
 
+  // Fungsi Hapus Pesanan
+  const handleDeleteOrder = async (orderId, orderNumber) => {
+    if (!window.confirm(`Apakah Anda yakin ingin menghapus pesanan ${orderNumber}?`)) {
+      return;
+    }
+
+    try {
+      await axios.delete(`/admin/orders/${orderId}`);
+      alert(`Pesanan ${orderNumber} berhasil dihapus.`);
+      if (selectedOrder?.id === orderId) {
+        setSelectedOrder(null);
+      }
+      fetchOrders();
+    } catch (error) {
+      alert(error.response?.data?.message || 'Gagal menghapus pesanan.');
+      console.error(error);
+    }
+  };
+
   const tabs = [
     { id: 'PENDING', label: 'Pesanan Baru', icon: <Clock className="w-4 h-4" /> },
     { id: 'DIPROSES', label: 'Dimasak', icon: <ChefHat className="w-4 h-4" /> },
@@ -87,28 +105,53 @@ export default function OrdersAdmin() {
   return (
     <div className="flex flex-col h-full bg-slate-50 font-sans relative">
 
-      {/* HEADER & TABS */}
+      {/* HEADER & TOOLBAR */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-20 p-4 lg:px-6 space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
           <h2 className="text-xl font-extrabold text-slate-800">Kelola Pesanan</h2>
 
-          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-            {/* INPUT FILTER TANGGAL */}
-            <div className="relative">
-              <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="w-full sm:w-auto pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-600 font-medium cursor-pointer"
-              />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto">
+            {/* TOOLBAR FILTER PERIODE */}
+            <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1 rounded-2xl border border-slate-200">
+              <button
+                onClick={() => setPeriod('today')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${period === 'today' ? 'bg-slate-800 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-200'}`}
+              >
+                Hari Ini
+              </button>
+              <button
+                onClick={() => setPeriod('7days')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${period === '7days' ? 'bg-slate-800 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-200'}`}
+              >
+                7 Hari
+              </button>
+              <button
+                onClick={() => setPeriod('30days')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${period === '30days' ? 'bg-slate-800 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-200'}`}
+              >
+                30 Hari
+              </button>
+
+              {/* Input Tanggal Spesifik */}
+              <div className="relative flex items-center">
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => {
+                    setSelectedDate(e.target.value);
+                    setPeriod('custom');
+                  }}
+                  className={`pl-8 pr-2 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${period === 'custom' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+                />
+                <Calendar className={`w-3.5 h-3.5 absolute left-2.5 pointer-events-none ${period === 'custom' ? 'text-white' : 'text-slate-400'}`} />
+              </div>
             </div>
 
             {/* INPUT PENCARIAN */}
             <div className="relative sm:w-64">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
-                type="text" placeholder="Cari pesanan..."
+                type="text" placeholder="Cari nama/no. order..."
                 value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
@@ -116,6 +159,7 @@ export default function OrdersAdmin() {
           </div>
         </div>
 
+        {/* TAB STATUS PESANAN */}
         <div className="flex overflow-x-auto hide-scrollbar gap-2 pb-1 -mx-2 px-2 md:mx-0 md:px-0">
           {tabs.map((tab) => (
             <button
@@ -135,54 +179,68 @@ export default function OrdersAdmin() {
       {/* LIST PESANAN */}
       <div className="p-4 lg:p-6 flex-1">
         {loading ? (
-          <div className="text-center py-10 text-slate-500 font-medium animate-pulse">Memuat data...</div>
+          <div className="text-center py-10 text-slate-500 font-medium animate-pulse">Memuat data pesanan...</div>
         ) : filteredOrders.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-3xl border border-slate-200 border-dashed">
             <CheckCircle2 className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-            <p className="font-bold text-slate-600">Belum ada pesanan {activeTab.toLowerCase()} di tanggal ini</p>
+            <p className="font-bold text-slate-600">Belum ada pesanan {activeTab.toLowerCase()} pada periode ini</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {filteredOrders.map(order => (
-              <div key={order.id} className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col">
-                <div className="flex justify-between items-start mb-3 pb-3 border-b border-slate-100">
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase block">No. Pesanan</span>
-                    <span className="font-black text-slate-800">{order.order_number}</span>
+              <div key={order.id} className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-start mb-3 pb-3 border-b border-slate-100">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block">No. Pesanan</span>
+                      <span className="font-black text-slate-800">{order.order_number}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block">Tanggal & Waktu</span>
+                      <span className="text-xs font-semibold text-slate-600">
+                        {new Date(order.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} • {new Date(order.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase block">Waktu</span>
-                    <span className="text-xs font-semibold text-slate-600">
-                      {new Date(order.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                    </span>
+
+                  <div className="space-y-2 mb-4">
+                    <div className="flex items-center gap-2 text-sm text-slate-700 font-bold">
+                      <User className="w-4 h-4 text-slate-400 shrink-0" /> {order.customer_name}
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-emerald-700 font-bold">
+                      <MapPin className="w-4 h-4 text-emerald-500 shrink-0" /> {order.class_room?.name}
+                    </div>
                   </div>
                 </div>
 
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center gap-2 text-sm text-slate-700 font-bold">
-                    <User className="w-4 h-4 text-slate-400" /> {order.customer_name}
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-emerald-700 font-bold">
-                    <MapPin className="w-4 h-4 text-emerald-500" /> {order.class_room?.name}
-                  </div>
-                </div>
-
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between mt-auto gap-2">
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                   <span className={`text-[10px] font-bold px-2 py-1 rounded-md border ${order.payment_status === 'PAID' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
                     {order.payment_method} {order.payment_status === 'PAID' ? 'LUNAS' : 'BELUM BAYAR'}
                   </span>
 
-                  <div className="flex gap-2">
+                  <div className="flex items-center gap-1.5">
+                    {/* Tombol Hapus */}
+                    <button
+                      onClick={() => handleDeleteOrder(order.id, order.order_number)}
+                      title="Hapus Pesanan"
+                      className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+
+                    {/* Tombol Detail */}
                     <button
                       onClick={() => setSelectedOrder(order)}
                       className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-2 rounded-xl transition-colors"
                     >
                       Detail
                     </button>
+
+                    {/* Tombol Status */}
                     {activeTab !== 'SELESAI' && (
                       <button
                         onClick={() => handleUpdateStatus(order.id, order.status)}
-                        className="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded-xl transition-colors"
+                        className="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition-colors"
                       >
                         {activeTab === 'PENDING' ? 'Proses' : activeTab === 'DIPROSES' ? 'Antar' : 'Selesaikan'}
                       </button>
@@ -197,7 +255,7 @@ export default function OrdersAdmin() {
 
       {/* MODAL DETAIL PESANAN */}
       {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
           <div className="bg-white rounded-3xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
 
             {/* Modal Header */}
@@ -206,9 +264,18 @@ export default function OrdersAdmin() {
                 <h3 className="font-bold text-slate-800 text-lg leading-tight">Detail Pesanan</h3>
                 <p className="text-xs text-slate-500 font-medium">{selectedOrder.order_number}</p>
               </div>
-              <button onClick={() => setSelectedOrder(null)} className="p-2 bg-slate-200 text-slate-600 rounded-full hover:bg-slate-300">
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleDeleteOrder(selectedOrder.id, selectedOrder.order_number)}
+                  title="Hapus Pesanan"
+                  className="p-2 bg-rose-100 text-rose-600 hover:bg-rose-200 rounded-full transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+                <button onClick={() => setSelectedOrder(null)} className="p-2 bg-slate-200 text-slate-600 rounded-full hover:bg-slate-300">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Modal Body */}

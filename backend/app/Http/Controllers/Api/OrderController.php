@@ -8,6 +8,7 @@ use App\Models\OrderItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class OrderController extends Controller
 {
@@ -31,23 +32,19 @@ class OrderController extends Controller
 
         DB::beginTransaction();
         try {
-            // Hitung Total Belanja dari Server
             $subtotal = 0;
             foreach ($request->items as $item) {
                 $subtotal += $item['price'] * $item['qty'];
             }
 
-            // Tambahkan ongkir ke total tagihan
             $deliveryFee = $request->delivery_fee ?? 0;
             $finalTotalAmount = $subtotal + $deliveryFee;
 
             $cashAmount = $request->payment_method === 'CASH' ? ($request->cash_amount ?? 0) : 0;
             $changeAmount = $request->payment_method === 'CASH' ? ($cashAmount - $finalTotalAmount) : 0;
 
-            // Generate Order Number Unik (contoh: GB-83921)
             $orderNumber = 'GB-' . strtoupper(Str::random(5));
 
-            // Simpan Data Utama Order
             $order = Order::create([
                 'order_number' => $orderNumber,
                 'customer_name' => $request->customer_name,
@@ -60,7 +57,6 @@ class OrderController extends Controller
                 'status' => 'PENDING'
             ]);
 
-            // Simpan Detail Item Order
             foreach ($request->items as $item) {
                 OrderItem::create([
                     'order_id' => $order->id,
@@ -73,7 +69,6 @@ class OrderController extends Controller
 
             DB::commit();
 
-            // Load Relasi untuk dikirim ke Frontend
             $order->load(['items.product', 'classRoom']);
 
             return response()->json([
@@ -123,22 +118,42 @@ class OrderController extends Controller
         ]);
     }
 
-    // Fetch semua pesanan untuk halaman Admin
+    /**
+     * Fetch semua pesanan untuk halaman Admin (dengan Filter Periode)
+     */
     public function indexAdmin(Request $request)
     {
-        $query = Order::with(['classRoom', 'items.product'])
-            ->orderBy('created_at', 'desc');
+        $period = $request->query('period', 'today');
+        $date = $request->query('date', Carbon::today()->toDateString());
 
-        if ($request->has('date') && $request->date != '') {
-            $query->whereDate('created_at', $request->date);
+        $startDate = Carbon::today()->startOfDay();
+        $endDate = Carbon::today()->endOfDay();
+
+        if ($period === '7days') {
+            $startDate = Carbon::now()->subDays(6)->startOfDay();
+            $endDate = Carbon::now()->endOfDay();
+        } elseif ($period === '30days') {
+            $startDate = Carbon::now()->subDays(29)->startOfDay();
+            $endDate = Carbon::now()->endOfDay();
+        } elseif ($period === 'custom' && $date) {
+            $startDate = Carbon::parse($date)->startOfDay();
+            $endDate = Carbon::parse($date)->endOfDay();
         }
 
-        $orders = $query->get();
+        $orders = Order::with(['classRoom', 'items.product'])
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->orderBy('created_at', 'desc')
+            ->get();
 
-        return response()->json(['status' => 'success', 'data' => $orders]);
+        return response()->json([
+            'status' => 'success', 
+            'data' => $orders
+        ]);
     }
 
-    // Update status pesanan
+    /**
+     * Update status pesanan
+     */
     public function updateStatus(Request $request, $id)
     {
         try {
@@ -163,6 +178,33 @@ class OrderController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => 'Error dari Server: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Hapus pesanan (Fitur percobaan/cleaning data)
+     */
+    public function destroy($id)
+    {
+        try {
+            $order = Order::findOrFail($id);
+            
+            // Hapus order_items terkait dulu
+            $order->items()->delete();
+            
+            // Hapus order utama
+            $order->delete();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Pesanan berhasil dihapus!'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal menghapus pesanan: ' . $e->getMessage()
             ], 500);
         }
     }

@@ -8,6 +8,8 @@ use App\Http\Controllers\Api\AdminProductController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\SettingController;
+use App\Http\Controllers\Api\ClassRoomController;
+use App\Http\Controllers\Api\CategoryController;
 
 /*
 |--------------------------------------------------------------------------
@@ -20,11 +22,17 @@ Route::get('/catalog', [CatalogController::class, 'index']);
 Route::post('/orders', [OrderController::class, 'store']);
 Route::get('/orders/track', [OrderController::class, 'track']);
 
-// Pengaturan Ongkir (Dibuat publik agar Checkout & Admin tanpa token tidak error)
+// Kelola Kelas (GET dibuka untuk umum agar dropdown Checkout bisa dibaca)
+Route::get('/classes', [ClassRoomController::class, 'index']);
+
+// Kelola Kategori (GET dibuka untuk umum agar Checkout bisa menghitung ongkir)
+Route::get('/categories', [CategoryController::class, 'index']);
+
+// Pengaturan Ongkir (Bisa dibaca publik agar Checkout tidak error)
 Route::get('/settings', [SettingController::class, 'index']);
 Route::post('/settings', [SettingController::class, 'update']);
 
-// Auth Login
+// Auth Login Admin
 Route::post('/login', [AuthController::class, 'login']);
 
 
@@ -38,7 +46,16 @@ Route::middleware('auth:sanctum')->group(function () {
     // Auth Logout
     Route::post('/logout', [AuthController::class, 'logout']);
 
-    // Semua endpoint yang diawali /api/admin/...
+    // Endpoint Kelola Kelas
+    Route::post('/classes', [ClassRoomController::class, 'store']);
+    Route::delete('/classes/{id}', [ClassRoomController::class, 'destroy']);
+
+    // Endpoint Kelola Kategori & Ongkir Dynamic
+    Route::post('/categories', [CategoryController::class, 'store']);
+    Route::put('/categories/{id}', [CategoryController::class, 'update']);
+    Route::delete('/categories/{id}', [CategoryController::class, 'destroy']);
+
+    // Prefix /api/admin/...
     Route::prefix('admin')->group(function () {
 
         // Ringkasan Dashboard
@@ -47,16 +64,20 @@ Route::middleware('auth:sanctum')->group(function () {
         // Kelola Pesanan
         Route::get('/orders', [OrderController::class, 'indexAdmin']);
         Route::patch('/orders/{id}/status', [OrderController::class, 'updateStatus']);
+        Route::delete('/orders/{id}', [OrderController::class, 'destroy']);
 
         // Kelola Produk / Menu
         Route::apiResource('/products', AdminProductController::class);
+
+        // Kelola Kategori Admin
+        Route::apiResource('/categories', CategoryController::class)->except(['create', 'edit']);
 
         // Kelola Akun Admin / User
         Route::get('/users', [UserController::class, 'index']);
         Route::post('/users', [UserController::class, 'store']);
         Route::delete('/users/{id}', [UserController::class, 'destroy']);
 
-        // Kelola Pengaturan Ongkir (Alias jika React memanggil /api/admin/settings)
+        // Kelola Pengaturan (Alias jika dipanggil via route admin)
         Route::get('/settings', [SettingController::class, 'index']);
         Route::post('/settings', [SettingController::class, 'update']);
     });
