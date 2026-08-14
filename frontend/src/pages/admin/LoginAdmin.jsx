@@ -23,7 +23,7 @@ export default function LoginAdmin() {
       // Simpan token ke brankas browser (localStorage)
       localStorage.setItem('admin_token', response.data.data.token);
       localStorage.setItem('admin_user', JSON.stringify(response.data.data.user));
-      
+
       // Arahkan ke dashboard
       navigate('/admin/dashboard');
     } catch (err) {
@@ -41,19 +41,19 @@ export default function LoginAdmin() {
           <h2 className="text-2xl font-black text-white">GoBI Admin</h2>
           <p className="text-slate-400 text-sm mt-1">Masuk untuk mengelola kantin</p>
         </div>
-        
+
         <form onSubmit={handleLogin} className="p-8 space-y-5">
           {error && (
             <div className="bg-rose-50 text-rose-600 p-3 rounded-xl text-sm font-bold border border-rose-100 text-center">
               {error}
             </div>
           )}
-          
+
           <div>
             <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase">Email Address</label>
             <div className="relative">
               <Mail className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input 
+              <input
                 type="email" required
                 value={email} onChange={e => setEmail(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all font-medium"
@@ -66,7 +66,7 @@ export default function LoginAdmin() {
             <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase">Password</label>
             <div className="relative">
               <Lock className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input 
+              <input
                 type="password" required
                 value={password} onChange={e => setPassword(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all font-medium"
@@ -75,7 +75,7 @@ export default function LoginAdmin() {
             </div>
           </div>
 
-          <button 
+          <button
             type="submit" disabled={loading}
             className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3.5 rounded-xl transition-colors disabled:opacity-70 mt-4"
           >

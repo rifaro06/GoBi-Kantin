@@ -1,20 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { 
-  ArrowLeft, Search, Clock, CheckCircle2, ChefHat, Bike, AlertCircle, 
-  Loader2, X, QrCode, MapPin, User, Phone, ShoppingBag, Receipt, Copy, Check, ChevronRight 
+import {
+  ArrowLeft, Search, Clock, CheckCircle2, ChefHat, Bike, AlertCircle,
+  Loader2, X, QrCode, MapPin, User, Phone, ShoppingBag, Receipt, Copy, Check, ChevronRight
 } from 'lucide-react';
 
 export default function OrderStatus() {
+
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [orders, setOrders] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
-  
+
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [copied, setCopied] = useState(false);
+
+  // State untuk menyimpan URL QRIS Global dari Settings
+  const [globalQrisUrl, setGlobalQrisUrl] = useState('');
+
+  const adminWhatsAppNumber = "62881025719124";
+
+  // Ambil URL QRIS terbaru dari Admin secara otomatis
+  useEffect(() => {
+    axios.get('/settings')
+      .then(res => {
+        const data = res.data.data || res.data;
+        if (data.qris_image_url) {
+          setGlobalQrisUrl(data.qris_image_url);
+        }
+      })
+      .catch(err => console.error('Gagal memuat settings QRIS:', err));
+  }, []);
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -29,41 +47,41 @@ export default function OrderStatus() {
       setOrders(response.data.data || []);
     } catch (error) {
       console.error("Gagal mengambil data pesanan", error);
-      
+
       // Dummy data pengujian
       if (searchQuery === '089673746693' || searchQuery.toUpperCase().startsWith('GB-')) {
         setOrders([
-          { 
-            id: 1, 
-            order_number: 'GB-KWP8V', 
+          {
+            id: 1,
+            order_number: 'GB-KWP8V',
             customer_name: 'owo',
             customer_phone: '089673746693',
             class_room: { name: 'Kelas VIII - A' },
-            total_amount: 9000, 
+            total_amount: 9000,
             delivery_fee: 1000,
-            status: 'PENDING', 
-            payment_method: 'CASH',
+            status: 'PENDING',
+            payment_method: 'QRIS',
             payment_status: 'UNPAID',
-            created_at: '2026-08-07T05:50:00Z', 
+            created_at: '2026-08-07T05:50:00Z',
             items: [
               { product: { name: 'Indomie Goreng Special (Telur Rebus & Sayur)' }, qty: 1, price: 8000, note: '' }
-            ] 
+            ]
           },
-          { 
-            id: 2, 
-            order_number: 'GB-IPKIJ', 
+          {
+            id: 2,
+            order_number: 'GB-IPKIJ',
             customer_name: 'owo',
             customer_phone: '089673746693',
             class_room: { name: 'Kelas VIII - A' },
-            total_amount: 7000, 
+            total_amount: 7000,
             delivery_fee: 1000,
-            status: 'SELESAI', 
+            status: 'SELESAI',
             payment_method: 'CASH',
             payment_status: 'PAID',
-            created_at: '2026-08-07T04:53:00Z', 
+            created_at: '2026-08-07T04:53:00Z',
             items: [
               { product: { name: 'Es Teh Manis Jumbo' }, qty: 2, price: 3000, note: 'Es sedikit' }
-            ] 
+            ]
           }
         ]);
       }
@@ -73,16 +91,16 @@ export default function OrderStatus() {
   };
 
   const getStatusBadge = (status) => {
-    switch(status?.toUpperCase()) {
-      case 'PENDING': 
+    switch (status?.toUpperCase()) {
+      case 'PENDING':
         return { icon: <Clock className="w-4 h-4" />, color: 'bg-amber-50 text-amber-700 border-amber-200', text: 'Menunggu' };
-      case 'DIPROSES': 
+      case 'DIPROSES':
         return { icon: <ChefHat className="w-4 h-4" />, color: 'bg-blue-50 text-blue-700 border-blue-200', text: 'Dimasak' };
-      case 'DIANTAR': 
+      case 'DIANTAR':
         return { icon: <Bike className="w-4 h-4" />, color: 'bg-purple-50 text-purple-700 border-purple-200', text: 'Sedang Diantar' };
-      case 'SELESAI': 
+      case 'SELESAI':
         return { icon: <CheckCircle2 className="w-4 h-4" />, color: 'bg-emerald-50 text-emerald-700 border-emerald-200', text: 'Selesai' };
-      default: 
+      default:
         return { icon: <AlertCircle className="w-4 h-4" />, color: 'bg-slate-100 text-slate-700 border-slate-200', text: status || 'Unknown' };
     }
   };
@@ -93,15 +111,35 @@ export default function OrderStatus() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleWhatsAppConfirm = () => {
+    if (!selectedOrder) return;
+    const className = selectedOrder.class_room?.name || 'Kelas';
+    const totalFormatted = parseFloat(selectedOrder.total_amount || 0).toLocaleString('id-ID');
+
+    const textMessage =
+      `Halo Admin GoBi Kantin, saya ingin konfirmasi pembayaran QRIS.
+
+*Detail Pesanan:*
+• Nomor Pesanan: *${selectedOrder.order_number}*
+• Nama Pemesan: *${selectedOrder.customer_name}*
+• Diantar ke: *${className}*
+• Total Tagihan: *Rp ${totalFormatted}*
+
+Berikut saya lampirkan foto/screenshot bukti pembayaran QRIS. Terima kasih!`;
+
+    const encodedText = encodeURIComponent(textMessage);
+    window.open(`https://wa.me/${adminWhatsAppNumber}?text=${encodedText}`, '_blank');
+  };
+
   return (
     <div className="min-h-[100dvh] bg-slate-100/70 pb-16 font-sans">
-      
+
       {/* Header Responsif */}
       <div className="bg-white/90 backdrop-blur-md border-b border-slate-200 sticky top-0 z-20 shadow-xs">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3 md:gap-4">
-            <button 
-              onClick={() => navigate('/')} 
+            <button
+              onClick={() => navigate('/')}
               className="p-2.5 bg-slate-100 hover:bg-slate-200 active:scale-95 rounded-2xl transition-all text-slate-700 shrink-0"
               title="Kembali"
             >
@@ -116,7 +154,7 @@ export default function OrderStatus() {
       </div>
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 md:pt-8 space-y-6">
-        
+
         {/* Form Pencarian Hero */}
         <div className="bg-white p-5 sm:p-7 md:p-8 rounded-3xl shadow-xs border border-slate-200/80 space-y-3 md:space-y-4">
           <div>
@@ -131,9 +169,9 @@ export default function OrderStatus() {
           <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
-              <input 
-                type="text" 
-                placeholder="Nomor HP (0812...) atau Kode Pesanan (GB-...)" 
+              <input
+                type="text"
+                placeholder="Nomor HP (0812...) atau Kode Pesanan (GB-...)"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-11 pr-10 py-3.5 sm:py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all placeholder:font-normal placeholder:text-slate-400"
@@ -148,9 +186,9 @@ export default function OrderStatus() {
                 </button>
               )}
             </div>
-            <button 
-              type="submit" 
-              disabled={loading || !searchQuery} 
+            <button
+              type="submit"
+              disabled={loading || !searchQuery}
               className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white px-7 py-3.5 sm:py-4 rounded-2xl font-bold text-sm transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 shrink-0"
             >
               {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <> <Search className="w-4 h-4" /> Cari Pesanan </>}
@@ -171,7 +209,7 @@ export default function OrderStatus() {
           </div>
         )}
 
-        {/* Hasil Pencarian (Responsif Grid 1-Kolom di HP, 2-Kolom di Desktop) */}
+        {/* Hasil Pencarian */}
         {orders.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center justify-between px-1">
@@ -179,29 +217,27 @@ export default function OrderStatus() {
                 Hasil Pencarian ({orders.length})
               </h2>
             </div>
-            
-            {/* GRID CONTAINER */}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
               {orders.map((order) => {
                 const badge = getStatusBadge(order.status);
                 return (
-                  <div 
-                    key={order.id} 
+                  <div
+                    key={order.id}
                     className="bg-white p-5 sm:p-6 rounded-3xl shadow-xs border border-slate-200/80 space-y-4 hover:border-emerald-400 transition-all flex flex-col justify-between"
                   >
-                    {/* Top Row */}
                     <div className="flex justify-between items-start gap-3">
                       <div>
                         <p className="font-mono font-black text-slate-800 text-lg sm:text-xl tracking-wider">
                           {order.order_number}
                         </p>
                         <p className="text-xs text-slate-400 font-medium mt-1">
-                          {new Date(order.created_at).toLocaleDateString('id-ID', { 
-                            day: 'numeric', 
-                            month: 'short', 
-                            year: 'numeric', 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
+                          {new Date(order.created_at).toLocaleDateString('id-ID', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
                           })}
                         </p>
                       </div>
@@ -210,7 +246,6 @@ export default function OrderStatus() {
                       </span>
                     </div>
 
-                    {/* Bottom Row */}
                     <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
                       <div>
                         <span className="text-[10px] sm:text-xs text-slate-400 block font-bold uppercase tracking-wider">
@@ -221,7 +256,7 @@ export default function OrderStatus() {
                         </span>
                       </div>
 
-                      <button 
+                      <button
                         onClick={() => setSelectedOrder(order)}
                         className="bg-slate-900 hover:bg-slate-800 active:scale-95 text-white text-xs sm:text-sm font-bold px-4 py-3 rounded-2xl transition-all shadow-xs flex items-center gap-1.5"
                       >
@@ -237,17 +272,16 @@ export default function OrderStatus() {
         )}
       </main>
 
-      {/* MODAL DETAIL PESANAN (CENTERED & SPACIOUS) */}
+      {/* MODAL DETAIL PESANAN */}
       {selectedOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          
           <div className="bg-white w-full max-w-md sm:max-w-lg rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col border border-slate-100 transition-all">
-            
+
             {/* Header Modal */}
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
               <h2 className="text-base sm:text-lg font-bold text-slate-800">Detail Pesanan</h2>
-              <button 
-                onClick={() => setSelectedOrder(null)} 
+              <button
+                onClick={() => setSelectedOrder(null)}
                 className="p-2 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-full transition-colors"
               >
                 <X className="w-5 h-5" />
@@ -256,7 +290,7 @@ export default function OrderStatus() {
 
             {/* Scrollable Body */}
             <div className="p-6 overflow-y-auto space-y-5 text-xs sm:text-sm text-slate-700">
-              
+
               {/* Box Nomor Pesanan */}
               <div className="bg-emerald-50/80 p-4 rounded-2xl border border-emerald-200/80 flex items-center justify-between">
                 <div>
@@ -267,7 +301,7 @@ export default function OrderStatus() {
                     {selectedOrder.order_number}
                   </span>
                 </div>
-                <button 
+                <button
                   onClick={() => handleCopy(selectedOrder.order_number)}
                   className="p-2.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-xl transition-all active:scale-95 flex items-center gap-1.5 text-xs font-bold"
                 >
@@ -284,22 +318,37 @@ export default function OrderStatus() {
                 </span>
               </div>
 
-              {/* QRIS jika belum dibayar */}
+              {/* QRIS DINAMIS & TOMBOL WA (JIKA UNPAID) */}
               {selectedOrder.payment_method === 'QRIS' && selectedOrder.payment_status === 'UNPAID' && (
                 <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl text-center space-y-3">
                   <div className="flex items-center justify-center gap-1.5 text-amber-800 font-bold text-xs sm:text-sm">
                     <QrCode className="w-5 h-5" /> Scan QRIS Pembayaran
                   </div>
-                  <div className="p-2 bg-white border border-amber-200/80 rounded-xl inline-block shadow-xs">
-                    <img 
-                      src="https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg" 
-                      alt="Scan QRIS" 
-                      className="w-40 h-40 object-contain"
+                  <div className="p-2.5 bg-white border border-amber-200/80 rounded-2xl inline-block shadow-xs max-w-[180px]">
+                    <img
+                      src={selectedOrder.qris_image_url || selectedOrder.qris_image || globalQrisUrl || "https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg"}
+                      alt="Scan QRIS"
+                      className="w-full h-auto object-contain rounded-lg"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = "https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg";
+                      }}
                     />
                   </div>
                   <p className="text-xs text-amber-700 font-medium leading-relaxed">
                     Scan QRIS di atas untuk menyelesaikan pembayaran agar pesananmu segera diproses.
                   </p>
+
+                  <button
+                    onClick={handleWhatsAppConfirm}
+                    type="button"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md text-xs mt-1"
+                  >
+                    <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                      <path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984 0 1.758.459 3.474 1.33 4.982l-1.413 5.161 5.282-1.385a9.924 9.924 0 004.789 1.226h.005c5.504 0 9.987-4.478 9.988-9.984 0-2.668-1.039-5.176-2.926-7.062a9.925 9.925 0 00-7.064-2.922zm5.828 14.175c-.244.688-1.427 1.314-1.968 1.378-.512.062-1.183.088-3.414-.834-2.853-1.178-4.689-4.082-4.832-4.272-.143-.19-1.161-1.545-1.161-2.946 0-1.401.734-2.091.995-2.378.261-.287.568-.359.758-.359.19 0 .38.002.545.009.176.008.414-.067.647.493.244.588.831 2.029.903 2.176.072.147.12.32.024.512-.096.191-.144.31-.287.48-.143.17-.301.38-.43.51-.143.143-.292.298-.126.583.167.285.741 1.223 1.589 1.979 1.091.972 2.011 1.274 2.296 1.417.285.143.452.119.619-.071.167-.19.714-.832.905-1.118.19-.286.38-.238.642-.143.262.095 1.666.786 1.952.929.285.143.476.214.547.333.071.119.071.688-.173 1.376z" />
+                    </svg>
+                    <span>Kirim Bukti Bayar via WA</span>
+                  </button>
                 </div>
               )}
 
@@ -385,8 +434,8 @@ export default function OrderStatus() {
 
             {/* Footer Modal */}
             <div className="p-4 sm:p-5 bg-slate-50 border-t border-slate-100 sticky bottom-0">
-              <button 
-                onClick={() => setSelectedOrder(null)} 
+              <button
+                onClick={() => setSelectedOrder(null)}
                 className="w-full bg-slate-900 hover:bg-slate-800 active:scale-[0.99] text-white font-bold py-3.5 rounded-2xl transition-all text-sm shadow-md"
               >
                 Tutup Detail

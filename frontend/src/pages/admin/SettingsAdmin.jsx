@@ -3,8 +3,7 @@ import axios from 'axios';
 import { 
     Save, CheckCircle2, AlertCircle, RefreshCw, 
     Shield, School, Truck, Plus, Trash2, Tag,
-    Info, SlidersHorizontal, Utensils, Coffee, Cookie,
-    Lock, ToggleLeft, ToggleRight, Settings2
+    Info, Settings2, Utensils, Coffee, ToggleLeft, ToggleRight, QrCode, Upload
 } from 'lucide-react';
 
 export default function SettingsAdmin() {
@@ -14,6 +13,7 @@ export default function SettingsAdmin() {
     const [settings, setSettings] = useState({
         kantin_open: "1",
         guru_password: "guru123",
+        qris_image_url: "",
         global_item_max: '5',
         global_min_fee: '1500',
         max_food_qty: '10',
@@ -28,16 +28,20 @@ export default function SettingsAdmin() {
         snack_fee: '1000',
     });
 
+    // State QRIS Image File & Preview
+    const [qrisFile, setQrisFile] = useState(null);
+    const [qrisPreview, setQrisPreview] = useState('');
+
     // State Kelola Kelas
     const [classes, setClasses] = useState([]);
     const [newClassName, setNewClassName] = useState('');
     const [loadingClass, setLoadingClass] = useState(false);
 
-    // State Kelola Kategori Dynamic (Dengan Tipe Ongkir)
+    // State Kelola Kategori Dynamic
     const [categories, setCategories] = useState([]);
     const [newCatName, setNewCatName] = useState('');
     const [newCatFee, setNewCatFee] = useState(0);
-    const [newCatType, setNewCatType] = useState('flat'); // 'flat' | 'tier_qty' | 'threshold_nominal'
+    const [newCatType, setNewCatType] = useState('flat');
     const [loadingCategory, setLoadingCategory] = useState(false);
     const [editingCategories, setEditingCategories] = useState({});
 
@@ -71,6 +75,10 @@ export default function SettingsAdmin() {
             }
 
             setSettings(prev => ({ ...prev, ...normalizedData }));
+
+            if (normalizedData.qris_image_url) {
+                setQrisPreview(normalizedData.qris_image_url);
+            }
 
             // 2. Fetch Classes
             const resClasses = await axios.get('/classes');
@@ -116,16 +124,43 @@ export default function SettingsAdmin() {
         if (statusMessage.text) setStatusMessage({ type: '', text: '' });
     };
 
+    // Handler Pilih Gambar QRIS
+    const handleQrisFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setQrisFile(file);
+            setQrisPreview(URL.createObjectURL(file));
+        }
+    };
+
     const handleSaveSettings = async (e) => {
         if (e) e.preventDefault();
         setLoading(true);
         setStatusMessage({ type: '', text: '' });
 
         try {
-            const response = await axios.post('/settings', settings);
+            const formData = new FormData();
+            Object.keys(settings).forEach(key => {
+                formData.append(key, settings[key]);
+            });
+
+            if (qrisFile) {
+                formData.append('qris_image', qrisFile);
+            }
+
+            const response = await axios.post('/settings', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
             if (settings.kantin_open === "0") {
                 sessionStorage.removeItem("teacher_access");
             }
+
+            if (response.data?.qris_image_url) {
+                setSettings(prev => ({ ...prev, qris_image_url: response.data.qris_image_url }));
+                setQrisPreview(response.data.qris_image_url);
+            }
+
             setStatusMessage({
                 type: 'success',
                 text: response.data?.message || 'Pengaturan berhasil disimpan!'
@@ -173,7 +208,7 @@ export default function SettingsAdmin() {
         }
     };
 
-    // --- KELOLA KATEGORI DENGAN TIPE ONGKIR ---
+    // --- KELOLA KATEGORI ---
     const handleAddCategory = async (e) => {
         e.preventDefault();
         if (!newCatName.trim()) return;
@@ -198,7 +233,6 @@ export default function SettingsAdmin() {
         }
     };
 
-    // FIX UUTAMA: Mengirim `name`, `shipping_fee`, dan `fee_type` agar backend tidak melempar validation error
     const handleUpdateCategory = async (id) => {
         const item = editingCategories[id];
         if (!item) return;
@@ -245,7 +279,7 @@ export default function SettingsAdmin() {
                 <div>
                     <h2 className="text-2xl font-black text-slate-900 tracking-tight">Pengaturan Kantin</h2>
                     <p className="text-xs sm:text-sm text-slate-500 font-medium">
-                        Atur jam operasional, kelas pengantaran, dan perhitungan tarif ongkir.
+                        Atur jam operasional, barcode QRIS, kelas pengantaran, dan perhitungan tarif ongkir.
                     </p>
                 </div>
             </div>
@@ -304,7 +338,7 @@ export default function SettingsAdmin() {
             {/* TAB 1: GENERAL */}
             {activeTab === 'general' && (
                 <form onSubmit={handleSaveSettings} className="space-y-6">
-                    <div className="bg-white rounded-3xl p-6 shadow-xs border border-slate-200 space-y-4">
+                    <div className="bg-white rounded-3xl p-6 shadow-xs border border-slate-200 space-y-5">
                         <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
                             <Shield className="w-5 h-5 text-emerald-600" />
                             <h3 className="font-extrabold text-slate-800 text-sm uppercase">Status Operasional</h3>
@@ -331,7 +365,7 @@ export default function SettingsAdmin() {
                             )}
                         </div>
 
-                        <div>
+                        <div className="pt-2">
                             <label className="text-xs font-bold text-slate-700 block mb-1">
                                 PIN Bypass Guru
                             </label>
@@ -343,6 +377,42 @@ export default function SettingsAdmin() {
                                 className="w-full sm:w-72 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800"
                             />
                         </div>
+
+                        {/* SECTION UPLOAD FOTO QRIS DINAMIS */}
+                        <div className="pt-5 border-t border-slate-100 space-y-3">
+                            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block flex items-center gap-1.5">
+                                <QrCode className="w-4 h-4 text-emerald-600" /> Gambar / Barcode QRIS Pembayaran
+                            </label>
+                            <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
+                                <div className="w-32 h-32 bg-white border border-slate-200 rounded-xl p-2 shrink-0 flex items-center justify-center overflow-hidden shadow-xs">
+                                    {qrisPreview ? (
+                                        <img src={qrisPreview} alt="Preview QRIS" className="w-full h-full object-contain" />
+                                    ) : (
+                                        <span className="text-[11px] text-slate-400 font-medium text-center">Belum ada foto QRIS</span>
+                                    )}
+                                </div>
+                                <div className="space-y-2 text-center sm:text-left flex-1">
+                                    <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                                        Unggah foto barcode QRIS Kantin terbaru. Foto ini yang akan tampil saat siswa memilih pembayaran QRIS.
+                                    </p>
+                                    <label className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold text-xs rounded-xl cursor-pointer transition-all active:scale-95">
+                                        <Upload className="w-4 h-4" /> Pilih File Gambar
+                                        <input 
+                                            type="file" 
+                                            accept="image/*"
+                                            onChange={handleQrisFileChange}
+                                            className="hidden"
+                                        />
+                                    </label>
+                                    {qrisFile && (
+                                        <p className="text-[11px] font-bold text-emerald-600 mt-1">
+                                            Dipilih: {qrisFile.name}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
 
                     <div className="text-right">
@@ -386,20 +456,18 @@ export default function SettingsAdmin() {
                 </div>
             )}
 
-            {/* TAB 3: ATURAN ONGKIR DYNAMIC (DENGAN TIPE PENGHITUNGAN) */}
+            {/* TAB 3: ATURAN ONGKIR DYNAMIC */}
             {activeTab === 'shipping' && (
                 <div className="space-y-6">
-
                     <div className="bg-emerald-900 text-white p-5 rounded-3xl space-y-2">
                         <div className="flex items-center gap-2 text-emerald-300 font-extrabold text-xs uppercase">
                             <Info className="w-4 h-4" /> Pilih Skema Ongkir Per Kategori
                         </div>
                         <p className="text-xs sm:text-sm text-emerald-100 font-medium leading-relaxed">
-                            Setiap kali kamu membuat kategori baru (seperti **ATK**, **Sembako**, dll), kamu bebas menentukan **Tipe Ongkirnya**: mau Flat (Tarif Tetap), Ikut Tier Porsi Makanan, atau Ikut Threshold Nominal Belanja.
+                            Setiap kali kamu membuat kategori baru, kamu bebas menentukan **Tipe Ongkirnya**: mau Flat, Ikut Tier Porsi Makanan, atau Ikut Threshold Nominal Belanja.
                         </p>
                     </div>
 
-                    {/* FORM TAMBAH KATEGORI */}
                     <div className="bg-white rounded-3xl p-6 shadow-xs border border-slate-200 space-y-6">
                         <div className="border-b border-slate-100 pb-3">
                             <h3 className="font-extrabold text-slate-800 text-sm uppercase flex items-center gap-2">
@@ -456,7 +524,6 @@ export default function SettingsAdmin() {
                             </div>
                         </form>
 
-                        {/* LIST DAFTAR KATEGORI AKTIF */}
                         <div className="space-y-3 pt-2">
                             <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                                 Daftar Kategori & Konfigurasi Aktif ({categories.length})
@@ -467,7 +534,6 @@ export default function SettingsAdmin() {
                                 
                                 return (
                                     <div key={cat.id} className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
-                                        
                                         <div className="flex items-center gap-3 w-full md:w-1/4">
                                             <div className="p-2 bg-emerald-100 text-emerald-800 rounded-xl">
                                                 <Tag className="w-4 h-4" />
@@ -476,8 +542,6 @@ export default function SettingsAdmin() {
                                         </div>
 
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full md:w-3/4 items-center">
-                                            
-                                            {/* DROPDOWN SKEMA ONGKIR */}
                                             <div>
                                                 <label className="text-[10px] font-bold text-slate-400 block mb-0.5">Tipe Ongkir</label>
                                                 <select
@@ -494,7 +558,6 @@ export default function SettingsAdmin() {
                                                 </select>
                                             </div>
 
-                                            {/* INPUT ONGKIR DASAR */}
                                             <div className="flex items-end gap-2">
                                                 <div className="flex-1">
                                                     <label className="text-[10px] font-bold text-slate-400 block mb-0.5">Ongkir Dasar (Rp)</label>
@@ -528,7 +591,6 @@ export default function SettingsAdmin() {
                                                     <Trash2 className="w-4 h-4" />
                                                 </button>
                                             </div>
-
                                         </div>
                                     </div>
                                 );
@@ -536,7 +598,6 @@ export default function SettingsAdmin() {
                         </div>
                     </div>
 
-                    {/* DYNAMIC ATURAN TIER GLOBAL (BERLAKU UNTUK SEMUA KATEGORI SESUAI TIPE) */}
                     <form onSubmit={handleSaveSettings} className="bg-white rounded-3xl p-6 shadow-xs border border-slate-200 space-y-6">
                         <div className="border-b border-slate-100 pb-3">
                             <h3 className="font-extrabold text-slate-900 text-sm uppercase flex items-center gap-2">
@@ -547,7 +608,6 @@ export default function SettingsAdmin() {
                             </p>
                         </div>
 
-                        {/* PARAMETER TIER PORSI */}
                         <div className="p-5 bg-amber-50/50 rounded-3xl border border-amber-200/70 space-y-4">
                             <div className="flex items-center gap-2 border-b border-amber-200/60 pb-2">
                                 <Utensils className="w-4 h-4 text-amber-700" />
@@ -574,7 +634,6 @@ export default function SettingsAdmin() {
                             </div>
                         </div>
 
-                        {/* PARAMETER NOMINAL THRESHOLD */}
                         <div className="p-5 bg-sky-50/50 rounded-3xl border border-sky-200/70 space-y-4">
                             <div className="flex items-center gap-2 border-b border-sky-200/60 pb-2">
                                 <Coffee className="w-4 h-4 text-sky-700" />
@@ -603,7 +662,6 @@ export default function SettingsAdmin() {
                             </button>
                         </div>
                     </form>
-
                 </div>
             )}
         </div>

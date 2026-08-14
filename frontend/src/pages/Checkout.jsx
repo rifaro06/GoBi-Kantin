@@ -8,7 +8,9 @@ import {
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 
+
 export default function Checkout() {
+
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -62,6 +64,8 @@ export default function Checkout() {
         return url.replace(/^http:\/\/(127\.0\.0\.1|localhost):8000/, '');
     };
 
+    
+    
     useEffect(() => {
         localStorage.setItem('gobi_checkout_form', JSON.stringify(formData));
     }, [formData]);
