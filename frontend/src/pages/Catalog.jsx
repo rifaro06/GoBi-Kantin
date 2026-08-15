@@ -225,7 +225,8 @@ export default function Catalog() {
                         <Sparkles className="w-3 h-3 text-amber-400 fill-amber-400" /> Kantin Digital GoBI
                     </span>
                     <h1 className="text-white font-black text-xl sm:text-2xl md:text-3xl tracking-tight leading-tight">
-                        Mau Makan Apa Hari Ini?
+                        Mau Makan Apa Hari Ini? {'\n'}
+                        kami siap antarkan ke Kelasmu!
                     </h1>
                 </div>
             </div>

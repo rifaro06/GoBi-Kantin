@@ -1,0 +1,54 @@
+name: Deploy Web Kantin ke cPanel 🚀
+
+on:
+  push:
+    branches:
+      - main # (Pastikan branch lu namanya main. Kalau master, ganti jadi master)
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🚚 Checkout Kodingan Terbaru
+        uses: actions/checkout@v3
+
+      - name: 📦 Setup Node.js (Buat Frontend)
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: 🛠️ Install & Build Frontend
+        run: |
+          cd frontend
+          npm install
+          npm run build
+
+      - name: 📁 Siapin Folder Pakingan (Deploy Ready)
+        run: |
+          mkdir -p deploy_ready
+          # 1. Pindahin hasil build React ke folder utama
+          cp -r frontend/dist/* deploy_ready/
+          # 2. Pindahin kodingan Laravel ke dalam folder api
+          mkdir -p deploy_ready/api
+          cp -r backend/* deploy_ready/api/
+
+      - name: 🚀 Auto-Upload ke cPanel via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./deploy_ready/
+          server-dir: ./
+          # PERISAI PELINDUNG SERVER: File di bawah ini GAK BAKAL ditimpa sama robot!
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            api/.env*
+            api/storage/**
+            api/vendor/**
+            api/index.php
+            api/.htaccess
+            .htaccess
+            storage/**
