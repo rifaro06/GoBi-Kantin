@@ -226,7 +226,7 @@ export default function Catalog() {
                     </span>
                     <h1 className="text-white font-black text-xl sm:text-2xl md:text-3xl tracking-tight leading-tight">
                         Mau Makan Apa Hari Ini? <br />
-                        kami siap antarkan ke Kelasmu!
+                        Kami siap antarkan ke Kelasmu!
                     </h1>
                 </div>
             </div>

@@ -36,10 +36,18 @@ class DashboardController extends Controller
         // 1. Total Pesanan Masuk
         $totalOrders = Order::whereBetween('created_at', [$startDate, $endDate])->count();
 
-        // 2. Total Pendapatan (Hanya pesanan yang sudah PAID)
-        $revenue = Order::whereBetween('created_at', [$startDate, $endDate])
+        // 2. PECAH PENDAPATAN (CASH & QRIS) - Hanya yang PAID
+        $revenueCash = Order::whereBetween('created_at', [$startDate, $endDate])
             ->where('payment_status', 'PAID')
+            ->where('payment_method', 'CASH')
             ->sum('total_amount');
+
+        $revenueQris = Order::whereBetween('created_at', [$startDate, $endDate])
+            ->where('payment_status', 'PAID')
+            ->where('payment_method', 'QRIS')
+            ->sum('total_amount');
+
+        $totalRevenue = $revenueCash + $revenueQris;
 
         // 3. Pesanan Menunggu Diproses (Status PENDING)
         $pendingOrders = Order::whereBetween('created_at', [$startDate, $endDate])
@@ -51,7 +59,7 @@ class DashboardController extends Controller
             ->where('status', 'SELESAI')
             ->count();
 
-        // 5. Menu Terlaris (Top 5) berdasarkan periode terfilter
+        // 5. Menu Terlaris (Top 5)
         $topMenus = DB::table('order_items')
             ->join('orders', 'order_items.order_id', '=', 'orders.id')
             ->join('products', 'order_items.product_id', '=', 'products.id')
@@ -74,7 +82,9 @@ class DashboardController extends Controller
                 'period_label' => strtoupper($periodLabel),
                 'metrics' => [
                     'total_orders' => $totalOrders,
-                    'revenue' => (int) $revenue,
+                    'revenue' => (int) $totalRevenue,
+                    'revenue_cash' => (int) $revenueCash,
+                    'revenue_qris' => (int) $revenueQris,
                     'pending_orders' => $pendingOrders,
                     'completed_orders' => $completedOrders,
                 ],
