@@ -23,6 +23,7 @@ export default function LoginAdmin() {
       // Simpan token ke brankas browser (localStorage)
       localStorage.setItem('admin_token', response.data.data.token);
       localStorage.setItem('admin_user', JSON.stringify(response.data.data.user));
+      localStorage.setItem('admin_role', response.data.data.user.role);
 
       // Arahkan ke dashboard
       navigate('/admin/dashboard');

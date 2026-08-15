@@ -33,7 +33,13 @@ class AuthController extends Controller
             'status' => 'success',
             'message' => 'Login berhasil!',
             'data' => [
-                'user' => $user,
+                // Kita definisiin spesifik biar role-nya kebawa ke frontend
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role' => $user->role, 
+                ],
                 'token' => $token
             ]
         ]);

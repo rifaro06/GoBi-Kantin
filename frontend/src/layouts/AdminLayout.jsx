@@ -17,6 +17,9 @@ export default function AdminLayout() {
     return <Navigate to="/admin/login" replace />;
   }
 
+  // 🟢 AMBIL ROLE SECARA DINAMIS DI DALAM KOMPONEN
+  const [role, setRole] = useState(localStorage.getItem('admin_role'));
+
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -36,13 +39,14 @@ export default function AdminLayout() {
 
   const location = useLocation();
   const notifRef = useRef(null);
-  const profileRef = useRef(null); // <-- Sudah diperbaiki dengan 'const'
+  const profileRef = useRef(null); 
 
   // Helper Logout Bersih
   const forceLogout = () => {
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_user');
     localStorage.removeItem('admin_last_activity');
+    localStorage.removeItem('admin_role'); // Bersihin role juga pas keluar
     navigate('/admin/login');
   };
 
@@ -123,6 +127,9 @@ export default function AdminLayout() {
 
   // Fetch Settings & Admin Data
   useEffect(() => {
+    // Sinkronkan role dari localStorage saat lokasi/halaman berubah
+    setRole(localStorage.getItem('admin_role'));
+
     axios.get('/settings')
       .then(res => {
         const data = res.data.data || res.data;
@@ -152,7 +159,7 @@ export default function AdminLayout() {
         console.error('Error parsing admin_user', e);
       }
     }
-  }, []);
+  }, [location.pathname]);
 
   // Check Pending Orders
   const checkNotifications = async () => {
@@ -203,12 +210,17 @@ export default function AdminLayout() {
     }
   };
 
+  // PEMBAGIAN HAK AKSES MENU DI SINI
   const navItems = [
     { path: '/admin/dashboard', icon: <LayoutDashboard className="w-5 h-5" />, label: 'Dashboard' },
     { path: '/admin/orders', icon: <ShoppingCart className="w-5 h-5" />, label: 'Pesanan Masuk' },
-    { path: '/admin/menus', icon: <ChefHat className="w-5 h-5" />, label: 'Kelola Menu' },
-    { path: '/admin/users', icon: <Users className="w-5 h-5" />, label: 'Kelola Admin' },
-    { path: '/admin/settings', icon: <Settings className="w-5 h-5" />, label: 'Pengaturan' },
+    
+    // Tiga menu ini HANYA dimuat jika role === 'admin'
+    ...(role === 'admin' ? [
+      { path: '/admin/menus', icon: <ChefHat className="w-5 h-5" />, label: 'Kelola Menu' },
+      { path: '/admin/users', icon: <Users className="w-5 h-5" />, label: 'Kelola Admin' },
+      { path: '/admin/settings', icon: <Settings className="w-5 h-5" />, label: 'Pengaturan' },
+    ] : [])
   ];
 
   const getInitials = (name) => {
@@ -406,15 +418,18 @@ export default function AdminLayout() {
                   </div>
 
                   <div className="p-1">
-                    <button
-                      onClick={() => {
-                        setIsProfileOpen(false);
-                        navigate('/admin/settings');
-                      }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
-                    >
-                      <Settings className="w-4 h-4 text-slate-400" /> Pengaturan Toko
-                    </button>
+                    {/* HANYA MUNCUL JIKA ROLE ADMIN */}
+                    {role === 'admin' && (
+                      <button
+                        onClick={() => {
+                          setIsProfileOpen(false);
+                          navigate('/admin/settings');
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+                      >
+                        <Settings className="w-4 h-4 text-slate-400" /> Pengaturan Toko
+                      </button>
+                    )}
 
                     <button
                       onClick={() => {
