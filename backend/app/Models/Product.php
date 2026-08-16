@@ -9,11 +9,11 @@ class Product extends Model
 {
     use HasFactory;
 
-    // 1. REVISI: Ubah 'category' jadi 'category_id'
     protected $fillable = [
         'name', 
         'category_id', 
         'price', 
+        'handling_fee', // <-- TAMBAHKAN INI
         'image', 
         'description',
         'is_available'
@@ -21,9 +21,9 @@ class Product extends Model
 
     protected $casts = [
         'is_available' => 'boolean',
+        'handling_fee' => 'integer',
     ];
 
-    // 2. REVISI: Tambahkan relasi ke Kategori biar controller nggak error
     public function category()
     {
         return $this->belongsTo(Category::class);

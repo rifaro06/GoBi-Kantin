@@ -30,10 +30,11 @@ class AdminProductController extends Controller
     {
         // Validasi data masukan
         $request->validate([
-            'name'        => 'required|string|max:255',
-            'price'       => 'required|numeric',
-            'description' => 'nullable|string',
-            'image'       => 'nullable',
+            'name'         => 'required|string|max:255',
+            'price'        => 'required|numeric',
+            'handling_fee' => 'nullable|numeric|min:0', // Validasi handling fee
+            'description'  => 'nullable|string',
+            'image'        => 'nullable',
         ]);
 
         $data = $request->except('image');
@@ -60,10 +61,11 @@ class AdminProductController extends Controller
 
         // Validasi data masukan
         $request->validate([
-            'name'        => 'required|string|max:255',
-            'price'       => 'required|numeric',
-            'description' => 'nullable|string',
-            'image'       => 'nullable',
+            'name'         => 'required|string|max:255',
+            'price'        => 'required|numeric',
+            'handling_fee' => 'nullable|numeric|min:0', // Validasi handling fee
+            'description'  => 'nullable|string',
+            'image'        => 'nullable',
         ]);
 
         $data = $request->except('image');

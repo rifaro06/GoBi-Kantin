@@ -18,16 +18,17 @@ class OrderController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'customer_name' => 'required|string',
+            'customer_name'  => 'required|string',
             'customer_phone' => 'required|string',
-            'class_room_id' => 'required|exists:class_rooms,id',
+            'class_room_id'  => 'required|exists:class_rooms,id',
             'payment_method' => 'required|in:CASH,QRIS',
-            'items' => 'required|array|min:1',
-            'items.*.id' => 'required|exists:products,id',
-            'items.*.qty' => 'required|integer|min:1',
-            'items.*.price' => 'required|numeric',
-            'items.*.note' => 'nullable|string',
-            'delivery_fee' => 'nullable|numeric',
+            'items'          => 'required|array|min:1',
+            'items.*.id'     => 'required|exists:products,id',
+            'items.*.qty'    => 'required|integer|min:1',
+            'items.*.price'  => 'required|numeric',
+            'items.*.note'   => 'nullable|string',
+            'delivery_fee'   => 'nullable|numeric',
+            'handling_fee'   => 'nullable|numeric', // Validasi handling fee
         ]);
 
         DB::beginTransaction();
@@ -38,7 +39,10 @@ class OrderController extends Controller
             }
 
             $deliveryFee = $request->delivery_fee ?? 0;
-            $finalTotalAmount = $subtotal + $deliveryFee;
+            $handlingFee = $request->handling_fee ?? 0;
+            
+            // Total bayar = subtotal produk + ongkir pengiriman + total biaya penanganan
+            $finalTotalAmount = $subtotal + $deliveryFee + $handlingFee;
 
             $cashAmount = $request->payment_method === 'CASH' ? ($request->cash_amount ?? 0) : 0;
             $changeAmount = $request->payment_method === 'CASH' ? ($cashAmount - $finalTotalAmount) : 0;
@@ -46,24 +50,24 @@ class OrderController extends Controller
             $orderNumber = 'GB-' . strtoupper(Str::random(5));
 
             $order = Order::create([
-                'order_number' => $orderNumber,
-                'customer_name' => $request->customer_name,
+                'order_number'   => $orderNumber,
+                'customer_name'  => $request->customer_name,
                 'customer_phone' => $request->customer_phone,
-                'class_room_id' => $request->class_room_id,
-                'total_amount' => $finalTotalAmount,
+                'class_room_id'  => $request->class_room_id,
+                'total_amount'   => $finalTotalAmount,
                 'payment_method' => $request->payment_method,
-                'cash_amount' => $cashAmount,
-                'change_amount' => $changeAmount > 0 ? $changeAmount : 0,
-                'status' => 'PENDING'
+                'cash_amount'    => $cashAmount,
+                'change_amount'  => $changeAmount > 0 ? $changeAmount : 0,
+                'status'         => 'PENDING'
             ]);
 
             foreach ($request->items as $item) {
                 OrderItem::create([
-                    'order_id' => $order->id,
+                    'order_id'   => $order->id,
                     'product_id' => $item['id'],
-                    'qty' => $item['qty'],
-                    'price' => $item['price'],
-                    'note' => $item['note'] ?? null,
+                    'qty'        => $item['qty'],
+                    'price'      => $item['price'],
+                    'note'       => $item['note'] ?? null,
                 ]);
             }
 
@@ -73,14 +77,14 @@ class OrderController extends Controller
 
             return response()->json([
                 'message' => 'Pesanan berhasil dibuat!',
-                'data' => $order
+                'data'    => $order
             ], 201);
 
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
                 'message' => 'Gagal membuat pesanan',
-                'error' => $e->getMessage()
+                'error'   => $e->getMessage()
             ], 500);
         }
     }

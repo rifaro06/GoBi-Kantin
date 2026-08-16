@@ -14,7 +14,7 @@ export default function MenusAdmin() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
-    name: '', category_id: '', price: '', description: '', image: '', is_available: true
+    name: '', category_id: '', price: '', handling_fee: '', description: '', image: '', is_available: true
   });
 
   // HELPER: Mencegah gambar pecah di HP/device lain & mengganti placeholder rusak
@@ -48,6 +48,7 @@ export default function MenusAdmin() {
       name: '', 
       category_id: categories[0]?.id || '', 
       price: '', 
+      handling_fee: '',
       description: '', 
       image: '', 
       is_available: true 
@@ -62,6 +63,7 @@ export default function MenusAdmin() {
       name: product.name,
       category_id: product.category_id,
       price: product.price,
+      handling_fee: product.handling_fee || '',
       description: product.description || '',
       image: product.image,
       is_available: product.is_available
@@ -77,6 +79,7 @@ export default function MenusAdmin() {
     submitData.append('name', formData.name);
     submitData.append('category_id', formData.category_id);
     submitData.append('price', formData.price);
+    submitData.append('handling_fee', formData.handling_fee || 0);
     submitData.append('description', formData.description || '');
     submitData.append('is_available', formData.is_available ? 1 : 0);
 
@@ -115,13 +118,14 @@ export default function MenusAdmin() {
     }
   };
 
-  // Toggle status Tersedia / Habis (DIPERBAIKI: Mengirim seluruh data agar lolos validasi Laravel)
+  // Toggle status Tersedia / Habis (Sertakan handling_fee agar lolos validasi Backend)
   const toggleAvailability = async (product) => {
     try {
       await axios.put(`/admin/products/${product.id}`, {
         name: product.name,
         category_id: product.category_id,
         price: product.price,
+        handling_fee: product.handling_fee || 0,
         description: product.description || '',
         is_available: !product.is_available ? 1 : 0
       });
@@ -218,7 +222,15 @@ export default function MenusAdmin() {
                   {product.description || 'Tidak ada deskripsi'}
                 </p>
 
-                <span className="font-black text-emerald-600 mt-auto">Rp{Number(product.price).toLocaleString('id-ID')}</span>
+                {/* TAMPILAN HARGA & BIAYA KEMASAN */}
+                <div className="flex items-center justify-between mt-auto">
+                  <span className="font-black text-emerald-600">Rp{Number(product.price).toLocaleString('id-ID')}</span>
+                  {Number(product.handling_fee) > 0 && (
+                    <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                      +Kemasan Rp{Number(product.handling_fee).toLocaleString('id-ID')}
+                    </span>
+                  )}
+                </div>
 
                 <div className="flex gap-2 mt-4 pt-3 border-t border-slate-100">
                   <button onClick={() => handleEdit(product)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-lg text-xs font-bold flex justify-center items-center gap-1 transition-colors">
@@ -248,19 +260,24 @@ export default function MenusAdmin() {
                 <input required type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
               </div>
 
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Kategori</label>
+                <select required value={formData.category_id} onChange={e => setFormData({ ...formData, category_id: e.target.value })} className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white">
+                  <option value="">Pilih...</option>
+                  {uniqueCategories.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 mb-1">Kategori</label>
-                  <select required value={formData.category_id} onChange={e => setFormData({ ...formData, category_id: e.target.value })} className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white">
-                    <option value="">Pilih...</option>
-                    {uniqueCategories.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Harga Menu (Rp)</label>
+                  <input required type="number" value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 mb-1">Harga (Rp)</label>
-                  <input required type="number" value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Biaya Kemasan (Rp)</label>
+                  <input type="number" value={formData.handling_fee} onChange={e => setFormData({ ...formData, handling_fee: e.target.value })} placeholder="Cth: 500" className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
                 </div>
               </div>
 

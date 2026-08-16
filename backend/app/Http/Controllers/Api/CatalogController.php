@@ -23,6 +23,7 @@ class CatalogController extends Controller
                     'category_name'=> $p->category_name ?? $p->kategori ?? null,
                     'name'         => $p->name ?? $p->title ?? $p->nama_produk ?? $p->nama ?? 'Menu Kantin',
                     'price'        => (float) ($p->price ?? $p->harga ?? 0),
+                    'handling_fee' => (int) ($p->handling_fee ?? 0), // Tambahan data handling_fee
                     'image'        => $p->image ?? $p->foto ?? $p->gambar ?? null,
                     'description'  => $p->description ?? $p->deskripsi ?? '',
                     'is_available' => isset($p->is_available) ? (bool)$p->is_available : true,
