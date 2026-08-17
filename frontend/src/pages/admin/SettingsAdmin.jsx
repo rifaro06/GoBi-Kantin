@@ -3,7 +3,8 @@ import axios from 'axios';
 import {
     Save, CheckCircle2, AlertCircle, RefreshCw,
     Shield, School, Truck, Plus, Trash2, Tag,
-    Info, Settings2, Utensils, Coffee, ToggleLeft, ToggleRight, QrCode, Upload
+    Info, Settings2, Utensils, Coffee, ToggleLeft, ToggleRight, QrCode, Upload,
+    GripVertical
 } from 'lucide-react';
 
 export default function SettingsAdmin() {
@@ -44,6 +45,9 @@ export default function SettingsAdmin() {
     const [newCatType, setNewCatType] = useState('flat');
     const [loadingCategory, setLoadingCategory] = useState(false);
     const [editingCategories, setEditingCategories] = useState({});
+
+    // State Drag and Drop Index
+    const [draggedIndex, setDraggedIndex] = useState(null);
 
     // State Status & Loading
     const [loading, setLoading] = useState(false);
@@ -101,16 +105,19 @@ export default function SettingsAdmin() {
     const fetchCategories = async () => {
         try {
             const resCat = await axios.get('/categories');
-            const catData = resCat.data.data || resCat.data || [];
+            let catData = resCat.data.data || resCat.data || [];
+            
+            // Urutkan kategori berdasarkan sort_order terkecil ke terbesar
+            catData.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
             setCategories(catData);
 
             const initialEditState = {};
             catData.forEach(c => {
                 initialEditState[c.id] = {
-                    name: c.name, // <-- Pastikan name masuk ke state edit
+                    name: c.name,
                     shipping_fee: c.shipping_fee ?? 0,
                     fee_type: c.fee_type || 'flat',
-                    sort_order: c.sort_order || 0 // <-- Tambahkan state urutan
+                    sort_order: c.sort_order || 0
                 };
             });
             setEditingCategories(initialEditState);
@@ -125,7 +132,6 @@ export default function SettingsAdmin() {
         if (statusMessage.text) setStatusMessage({ type: '', text: '' });
     };
 
-    // Handler Pilih Gambar QRIS
     const handleQrisFileChange = (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -240,10 +246,10 @@ export default function SettingsAdmin() {
 
         try {
             await axios.put(`/categories/${id}`, {
-                name: item.name, // <-- Kirim nama baru ke backend
+                name: item.name,
                 shipping_fee: Number(item.shipping_fee) || 0,
                 fee_type: item.fee_type,
-                sort_order: Number(item.sort_order) || 0 // <-- Kirim urutan baru ke backend
+                sort_order: Number(item.sort_order) || 0
             });
             setStatusMessage({ type: 'success', text: `Pengaturan untuk "${item.name}" berhasil disimpan!` });
             fetchCategories();
@@ -263,6 +269,37 @@ export default function SettingsAdmin() {
             console.error('Gagal menghapus kategori:', err);
             setStatusMessage({ type: 'error', text: 'Gagal menghapus kategori.' });
         }
+    };
+
+    // --- HANDLER DRAG AND DROP ---
+    const handleDragStart = (index) => {
+        setDraggedIndex(index);
+    };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+    };
+
+    const handleDrop = (dropIndex) => {
+        if (draggedIndex === null || draggedIndex === dropIndex) return;
+
+        const updatedCategories = [...categories];
+        const [movedItem] = updatedCategories.splice(draggedIndex, 1);
+        updatedCategories.splice(dropIndex, 0, movedItem);
+
+        // Update nilai sort_order berurutan (1, 2, 3, dst) untuk semua item
+        const updatedEditing = { ...editingCategories };
+        updatedCategories.forEach((cat, index) => {
+            const newOrder = index + 1;
+            updatedEditing[cat.id] = {
+                ...updatedEditing[cat.id],
+                sort_order: newOrder
+            };
+        });
+
+        setCategories(updatedCategories);
+        setEditingCategories(updatedEditing);
+        setDraggedIndex(null);
     };
 
     if (fetching) {
@@ -377,7 +414,7 @@ export default function SettingsAdmin() {
 
                         {/* SECTION UPLOAD FOTO QRIS DINAMIS */}
                         <div className="pt-5 border-t border-slate-100 space-y-3">
-                            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block flex items-center gap-1.5">
+                            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                                 <QrCode className="w-4 h-4 text-emerald-600" /> Gambar / Barcode QRIS Pembayaran
                             </label>
                             <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
@@ -523,31 +560,48 @@ export default function SettingsAdmin() {
 
                         <div className="space-y-3 pt-2">
                             <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                                Daftar Kategori & Konfigurasi Aktif ({categories.length})
+                                Daftar Kategori & Konfigurasi Aktif ({categories.length}) — <span className="text-emerald-600 capitalize font-medium">Geser ikon titik-titik untuk drag & drop</span>
                             </p>
 
-                            {categories.map((cat) => {
+                            {categories.map((cat, index) => {
                                 const currentEdit = editingCategories[cat.id] || { name: cat.name, shipping_fee: cat.shipping_fee, fee_type: cat.fee_type || 'flat', sort_order: cat.sort_order || 0 };
-                                
+
                                 return (
-                                    <div key={cat.id} className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
-                                        
-                                        {/* BAGIAN NAMA KATEGORI (SEKARANG BISA DIEDIT) */}
-                                        <div className="flex-1 w-full md:w-1/3">
-                                            <label className="text-[10px] font-bold text-slate-400 block mb-0.5">Nama Kategori</label>
-                                            <div className="flex items-center gap-2">
-                                                <div className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg shrink-0">
-                                                    <Tag className="w-4 h-4" />
+                                    <div
+                                        key={cat.id}
+                                        draggable
+                                        onDragStart={() => handleDragStart(index)}
+                                        onDragOver={handleDragOver}
+                                        onDrop={() => handleDrop(index)}
+                                        className={`p-4 bg-slate-50 border rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 transition-all ${
+                                            draggedIndex === index ? 'opacity-40 border-dashed border-emerald-500 bg-emerald-50' : 'border-slate-200/80 hover:border-slate-300'
+                                        }`}
+                                    >
+                                        {/* DRAG HANDLE & NAMA KATEGORI */}
+                                        <div className="flex-1 w-full md:w-1/3 flex items-center gap-2">
+                                            <div 
+                                                className="cursor-grab active:cursor-grabbing p-1.5 hover:bg-slate-200/70 text-slate-400 hover:text-slate-600 rounded-lg shrink-0 transition-colors"
+                                                title="Geser posisi urutan"
+                                            >
+                                                <GripVertical className="w-5 h-5" />
+                                            </div>
+
+                                            <div className="flex-1">
+                                                <label className="text-[10px] font-bold text-slate-400 block mb-0.5">Nama Kategori</label>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg shrink-0">
+                                                        <Tag className="w-4 h-4" />
+                                                    </div>
+                                                    <input
+                                                        type="text"
+                                                        value={currentEdit.name}
+                                                        onChange={(e) => setEditingCategories({
+                                                            ...editingCategories,
+                                                            [cat.id]: { ...currentEdit, name: e.target.value }
+                                                        })}
+                                                        className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                                                    />
                                                 </div>
-                                                <input
-                                                    type="text"
-                                                    value={currentEdit.name}
-                                                    onChange={(e) => setEditingCategories({
-                                                        ...editingCategories,
-                                                        [cat.id]: { ...currentEdit, name: e.target.value }
-                                                    })}
-                                                    className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-                                                />
                                             </div>
                                         </div>
 
@@ -584,7 +638,7 @@ export default function SettingsAdmin() {
                                             </div>
 
                                             <div className="flex items-end gap-2">
-                                                {/* INPUT URUTAN BARU */}
+                                                {/* INPUT URUTAN MANUAL (MASIH DAPAT DIISI/DIUBAH SAMA SEPERTI SEBELUMNYA) */}
                                                 <div className="w-16 shrink-0">
                                                     <label className="text-[10px] font-bold text-slate-400 block mb-0.5">Urutan</label>
                                                     <input
