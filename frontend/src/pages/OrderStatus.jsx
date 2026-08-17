@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
   ArrowLeft, Search, Clock, CheckCircle2, ChefHat, Bike, AlertCircle,
-  Loader2, X, QrCode, MapPin, User, Phone, ShoppingBag, Receipt, Copy, Check, ChevronRight
+  Loader2, X, QrCode, MapPin, User, Phone, ShoppingBag, Receipt, Copy, Check, ChevronRight, MessageCircle
 } from 'lucide-react';
 
 export default function OrderStatus() {
@@ -59,9 +59,9 @@ export default function OrderStatus() {
             class_room: { name: 'Kelas VIII - A' },
             total_amount: 9000,
             delivery_fee: 1000,
-            status: 'PENDING',
-            payment_method: 'QRIS',
-            payment_status: 'UNPAID',
+            status: 'DIPROSES',
+            payment_method: 'CASH',
+            payment_status: 'PAID',
             created_at: '2026-08-07T05:50:00Z',
             items: [
               { product: { name: 'Indomie Goreng Special (Telur Rebus & Sayur)' }, qty: 1, price: 8000, note: '' }
@@ -111,6 +111,7 @@ export default function OrderStatus() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Kirim Konfirmasi Pembayaran QRIS
   const handleWhatsAppConfirm = () => {
     if (!selectedOrder) return;
     const className = selectedOrder.class_room?.name || 'Kelas';
@@ -126,6 +127,29 @@ export default function OrderStatus() {
 • Total Tagihan: *Rp ${totalFormatted}*
 
 Berikut saya lampirkan foto/screenshot bukti pembayaran QRIS. Terima kasih!`;
+
+    const encodedText = encodeURIComponent(textMessage);
+    window.open(`https://wa.me/${adminWhatsAppNumber}?text=${encodedText}`, '_blank');
+  };
+
+  // Hubungi Kantin saat pesanan Dimasak / Proses
+  const handleWhatsAppContact = () => {
+    if (!selectedOrder) return;
+    const className = selectedOrder.class_room?.name || 'Kelas';
+    const statusText = getStatusBadge(selectedOrder.status).text;
+    const paymentText = selectedOrder.payment_status === 'PAID' ? 'Lunas' : 'Belum Dibayar';
+
+    const textMessage =
+      `Halo Admin GoBi Kantin, saya ingin menanyakan perkembangan pesanan saya.
+
+*Detail Pesanan:*
+• Nomor Pesanan: *${selectedOrder.order_number}*
+• Nama Pemesan: *${selectedOrder.customer_name}*
+• Diantar ke: *${className}*
+• Status Pesanan: *${statusText}*
+• Status Pembayaran: *${paymentText}*
+
+Ada yang ingin saya tanyakan terkait pesanan ini. Terima kasih!`;
 
     const encodedText = encodeURIComponent(textMessage);
     window.open(`https://wa.me/${adminWhatsAppNumber}?text=${encodedText}`, '_blank');
@@ -317,6 +341,24 @@ Berikut saya lampirkan foto/screenshot bukti pembayaran QRIS. Terima kasih!`;
                   {getStatusBadge(selectedOrder.status).icon} {getStatusBadge(selectedOrder.status).text}
                 </span>
               </div>
+
+              {/* TOMBOL CHAT KANTIN (MUNCUL SAAT DIMASAK / SUDAH DIBAYAR NAMPUN BELUM SELESAI) */}
+              {(selectedOrder.status === 'DIPROSES' || (selectedOrder.payment_status === 'PAID' && selectedOrder.status !== 'SELESAI')) && (
+                <div className="bg-emerald-50/90 border border-emerald-200/80 p-3.5 rounded-2xl flex items-center justify-between gap-3">
+                  <div className="space-y-0.5">
+                    <p className="font-bold text-emerald-900 text-xs sm:text-sm">Pesanan Sedang Diproses</p>
+                    <p className="text-[11px] sm:text-xs text-emerald-700">Ada kendala? Hubungi kantin via WhatsApp.</p>
+                  </div>
+                  <button
+                    onClick={handleWhatsAppContact}
+                    type="button"
+                    className="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold py-2 px-3.5 rounded-xl flex items-center gap-1.5 transition-all text-xs shrink-0 shadow-sm"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span>Chat WA</span>
+                  </button>
+                </div>
+              )}
 
               {/* QRIS DINAMIS & TOMBOL WA (JIKA UNPAID) */}
               {selectedOrder.payment_method === 'QRIS' && selectedOrder.payment_status === 'UNPAID' && (
