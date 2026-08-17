@@ -15,7 +15,7 @@ export default function SuccessTicket() {
   const [globalQrisUrl, setGlobalQrisUrl] = useState('');
 
   // Nomor WA Admin Kantin
-  const adminWhatsAppNumber = "62881025719124";
+  const adminWhatsAppNumber = "62881025337675"; // Nomor WA Admin Kantin
 
   useEffect(() => {
     localStorage.removeItem('gobi_cart');

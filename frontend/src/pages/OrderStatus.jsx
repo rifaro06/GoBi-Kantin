@@ -20,7 +20,7 @@ export default function OrderStatus() {
   // State untuk menyimpan URL QRIS Global dari Settings
   const [globalQrisUrl, setGlobalQrisUrl] = useState('');
 
-  const adminWhatsAppNumber = "62881025719124";
+  const adminWhatsAppNumber = "62881025337675"; // Nomor WA Admin Kantin
 
   // Ambil URL QRIS terbaru dari Admin secara otomatis
   useEffect(() => {
