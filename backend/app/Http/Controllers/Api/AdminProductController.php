@@ -29,6 +29,7 @@ class AdminProductController extends Controller
     {
         $request->validate([
             'name'         => 'required|string|max:255',
+            'category_id'  => 'required|exists:categories,id',
             'price'        => 'required|numeric',
             'handling_fee' => 'nullable|numeric|min:0',
             'description'  => 'nullable|string',
