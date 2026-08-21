@@ -4,7 +4,7 @@ import { X, Plus, Minus } from 'lucide-react';
 export default function ProductModal({ product, onClose, onAddToCart }) {
     const [quantity, setQuantity] = useState(1);
     const [note, setNote] = useState('');
-    const [selectedVariants, setSelectedVariants] = useState([]); 
+    const [selectedVariant, setSelectedVariant] = useState('');
 
     useEffect(() => {
         if (product) {
