@@ -11,11 +11,9 @@ class CatalogController extends Controller
     public function index()
     {
         try {
-            // 1. Ambil data mentah dari database
             $categoriesRaw = Schema::hasTable('categories') ? DB::table('categories')->get() : collect([]);
             $productsRaw   = Schema::hasTable('products') ? DB::table('products')->get() : collect([]);
 
-            // Helper format produk
             $formattedProducts = $productsRaw->map(function ($p) {
                 return [
                     'id'           => $p->id ?? rand(1000, 9999),
@@ -23,9 +21,10 @@ class CatalogController extends Controller
                     'category_name'=> $p->category_name ?? $p->kategori ?? null,
                     'name'         => $p->name ?? $p->title ?? $p->nama_produk ?? $p->nama ?? 'Menu Kantin',
                     'price'        => (float) ($p->price ?? $p->harga ?? 0),
-                    'handling_fee' => (int) ($p->handling_fee ?? 0), // Tambahan data handling_fee
+                    'handling_fee' => (int) ($p->handling_fee ?? 0),
                     'image'        => $p->image ?? $p->foto ?? $p->gambar ?? null,
                     'description'  => $p->description ?? $p->deskripsi ?? '',
+                    'variants'     => $p->variants ?? '', // <-- TAMBAHAN VARIAN
                     'is_available' => isset($p->is_available) ? (bool)$p->is_available : true,
                 ];
             })->values();
@@ -55,12 +54,10 @@ class CatalogController extends Controller
                 }
             }
 
-            // Hitung total produk yang berhasil masuk ke dalam kategori
             $totalAssigned = array_reduce($catalogData, function ($sum, $cat) {
                 return $sum + count($cat['products']);
             }, 0);
 
-            // PENYELAMAT: JIKA KATEGORI KOSONG ATAU RELASI CATEGORY_ID TIDAK COCOK
             if ($totalAssigned === 0 && $formattedProducts->isNotEmpty()) {
                 $catalogData = [
                     [
@@ -75,7 +72,6 @@ class CatalogController extends Controller
 
             $classRooms = Schema::hasTable('class_rooms') ? DB::table('class_rooms')->get() : [];
             
-            // PERBAIKAN UTAMA: Menggunakan key_name sesuai schema tabel settings
             $settings = [];
             if (Schema::hasTable('settings')) {
                 try {

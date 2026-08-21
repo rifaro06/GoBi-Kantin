@@ -7,10 +7,10 @@ use App\Models\Product;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class AdminProductController extends Controller
 {
-    // Mengambil semua produk dan daftar kategori
     public function index()
     {
         $products = Product::with('category')->latest()->get();
@@ -25,27 +25,23 @@ class AdminProductController extends Controller
         ]);
     }
 
-    // Menambah menu baru
     public function store(Request $request)
     {
-        // Validasi data masukan
         $request->validate([
             'name'         => 'required|string|max:255',
             'price'        => 'required|numeric',
-            'handling_fee' => 'nullable|numeric|min:0', // Validasi handling fee
+            'handling_fee' => 'nullable|numeric|min:0',
             'description'  => 'nullable|string',
+            'variants'     => 'nullable|string', // <-- TAMBAHAN VARIAN
             'image'        => 'nullable',
         ]);
 
         $data = $request->except('image');
 
-        // Cek apakah ada file gambar yang diupload
         if ($request->hasFile('image')) {
-            // Simpan ke storage/app/public/products
             $imagePath = $request->file('image')->store('products', 'public');
             $data['image'] = url('storage/' . $imagePath);
         } elseif ($request->filled('image')) {
-            // Jika dikirim berupa string URL gambar
             $data['image'] = $request->image;
         }
 
@@ -54,25 +50,22 @@ class AdminProductController extends Controller
         return response()->json(['status' => 'success', 'message' => 'Menu berhasil ditambahkan!']);
     }
 
-    // Mengubah data menu
     public function update(Request $request, $id)
     {
         $product = Product::findOrFail($id);
 
-        // Validasi data masukan
         $request->validate([
             'name'         => 'required|string|max:255',
             'price'        => 'required|numeric',
-            'handling_fee' => 'nullable|numeric|min:0', // Validasi handling fee
+            'handling_fee' => 'nullable|numeric|min:0',
             'description'  => 'nullable|string',
+            'variants'     => 'nullable|string', // <-- TAMBAHAN VARIAN
             'image'        => 'nullable',
         ]);
 
         $data = $request->except('image');
 
-        // Jika mengupload gambar baru
         if ($request->hasFile('image')) {
-            // Hapus gambar lama dari storage jika bukan berupa URL eksternal
             if ($product->image && str_contains($product->image, 'storage/products/')) {
                 $oldPath = str_replace(url('storage/'), '', $product->image);
                 Storage::disk('public')->delete($oldPath);
@@ -87,19 +80,19 @@ class AdminProductController extends Controller
         return response()->json(['status' => 'success', 'message' => 'Menu berhasil diupdate!']);
     }
 
-    // Menghapus menu
     public function destroy($id)
     {
         $product = Product::findOrFail($id);
 
-        // Hapus file gambar dari storage jika ada
         if ($product->image && str_contains($product->image, 'storage/products/')) {
             $oldPath = str_replace(url('storage/'), '', $product->image);
             Storage::disk('public')->delete($oldPath);
         }
 
-        $product->delete();
+        DB::statement('SET FOREIGN_KEY_CHECKS=0;'); 
+        $product->delete(); 
+        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
-        return response()->json(['status' => 'success', 'message' => 'Menu berhasil dihapus!']);
+        return response()->json(['status' => 'success', 'message' => 'Menu berhasil dihapus paksa!']);
     }
 }

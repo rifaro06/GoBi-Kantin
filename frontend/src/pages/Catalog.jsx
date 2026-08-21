@@ -175,7 +175,7 @@ export default function Catalog() {
         return () => observer.disconnect();
     }, [formattedCategories, searchMenu]);
 
-    const handleAddToCart = (product, qty = 1, note = '') => {
+    const handleAddToCart = (product, qty = 1, note = '', variants = []) => {
         let catName = product.category_name || product.category?.name;
         if (!catName && data.categories) {
             const foundCat = data.categories.find(c => (c.products || []).some(p => String(p.id) === String(product.id)));
@@ -193,7 +193,8 @@ export default function Catalog() {
             }
         }
 
-        if (addToCart) addToCart(product, qty, note);
+        // PERBAIKAN: Pastikan 'variants' ikut dikirim ke CartContext
+        if (addToCart) addToCart(product, qty, note, variants);
         setSelectedProduct(null);
     };
 

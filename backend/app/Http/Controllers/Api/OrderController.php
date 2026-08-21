@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Throwable;
 
 class OrderController extends Controller
 {
@@ -17,57 +18,61 @@ class OrderController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'customer_name'  => 'required|string',
-            'customer_phone' => 'required|string',
+        $validated = $request->validate([
+            'customer_name'  => 'required|string|max:255',
+            'customer_phone' => 'required|string|max:20',
             'class_room_id'  => 'required|exists:class_rooms,id',
             'payment_method' => 'required|in:CASH,QRIS',
+            'cash_amount'    => 'required_if:payment_method,CASH|nullable|numeric|min:0',
             'items'          => 'required|array|min:1',
             'items.*.id'     => 'required|exists:products,id',
             'items.*.qty'    => 'required|integer|min:1',
-            'items.*.price'  => 'required|numeric',
+            'items.*.price'  => 'required|numeric|min:0',
             'items.*.note'   => 'nullable|string',
-            'delivery_fee'   => 'nullable|numeric',
-            'handling_fee'   => 'nullable|numeric', // Validasi handling fee
+            'items.*.variant'=> 'nullable|string',
+            'delivery_fee'   => 'nullable|numeric|min:0',
+            'handling_fee'   => 'nullable|numeric|min:0',
         ]);
 
         DB::beginTransaction();
         try {
             $subtotal = 0;
-            foreach ($request->items as $item) {
+            foreach ($validated['items'] as $item) {
                 $subtotal += $item['price'] * $item['qty'];
             }
 
-            $deliveryFee = $request->delivery_fee ?? 0;
-            $handlingFee = $request->handling_fee ?? 0;
-            
-            // Total bayar = subtotal produk + ongkir pengiriman + total biaya penanganan
+            $deliveryFee = $validated['delivery_fee'] ?? 0;
+            $handlingFee = $validated['handling_fee'] ?? 0;
             $finalTotalAmount = $subtotal + $deliveryFee + $handlingFee;
 
-            $cashAmount = $request->payment_method === 'CASH' ? ($request->cash_amount ?? 0) : 0;
-            $changeAmount = $request->payment_method === 'CASH' ? ($cashAmount - $finalTotalAmount) : 0;
+            $cashAmount = ($validated['payment_method'] === 'CASH') ? ($validated['cash_amount'] ?? 0) : 0;
+            $changeAmount = ($validated['payment_method'] === 'CASH') ? max(0, $cashAmount - $finalTotalAmount) : 0;
 
             $orderNumber = 'GB-' . strtoupper(Str::random(5));
 
             $order = Order::create([
                 'order_number'   => $orderNumber,
-                'customer_name'  => $request->customer_name,
-                'customer_phone' => $request->customer_phone,
-                'class_room_id'  => $request->class_room_id,
+                'customer_name'  => $validated['customer_name'],
+                'customer_phone' => $validated['customer_phone'],
+                'class_room_id'  => $validated['class_room_id'],
                 'total_amount'   => $finalTotalAmount,
-                'payment_method' => $request->payment_method,
+                'delivery_fee'   => $deliveryFee,
+                'handling_fee'   => $handlingFee,
+                'payment_method' => $validated['payment_method'],
+                'payment_status' => 'UNPAID',
                 'cash_amount'    => $cashAmount,
-                'change_amount'  => $changeAmount > 0 ? $changeAmount : 0,
+                'change_amount'  => $changeAmount,
                 'status'         => 'PENDING'
             ]);
 
-            foreach ($request->items as $item) {
+            foreach ($validated['items'] as $item) {
                 OrderItem::create([
                     'order_id'   => $order->id,
                     'product_id' => $item['id'],
                     'qty'        => $item['qty'],
                     'price'      => $item['price'],
                     'note'       => $item['note'] ?? null,
+                    'variant'    => $item['variant'] ?? null,
                 ]);
             }
 
@@ -76,13 +81,15 @@ class OrderController extends Controller
             $order->load(['items.product', 'classRoom']);
 
             return response()->json([
+                'status'  => 'success',
                 'message' => 'Pesanan berhasil dibuat!',
                 'data'    => $order
             ], 201);
 
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
             DB::rollBack();
             return response()->json([
+                'status'  => 'error',
                 'message' => 'Gagal membuat pesanan',
                 'error'   => $e->getMessage()
             ], 500);
@@ -94,11 +101,11 @@ class OrderController extends Controller
      */
     public function track(Request $request)
     {
-        $query = $request->query('query');
+        $query = trim($request->query('query', ''));
 
-        if (!$query) {
+        if (empty($query)) {
             return response()->json([
-                'status' => 'error',
+                'status'  => 'error',
                 'message' => 'Masukkan nomor HP atau nomor pesanan.'
             ], 400);
         }
@@ -111,14 +118,14 @@ class OrderController extends Controller
 
         if ($orders->isEmpty()) {
             return response()->json([
-                'status' => 'error',
+                'status'  => 'error',
                 'message' => 'Data pesanan tidak ditemukan.'
             ], 404);
         }
 
         return response()->json([
             'status' => 'success',
-            'data' => $orders
+            'data'   => $orders
         ]);
     }
 
@@ -128,20 +135,20 @@ class OrderController extends Controller
     public function indexAdmin(Request $request)
     {
         $period = $request->query('period', 'today');
-        $date = $request->query('date', Carbon::today()->toDateString());
+        $date   = $request->query('date', Carbon::today()->toDateString());
 
         $startDate = Carbon::today()->startOfDay();
-        $endDate = Carbon::today()->endOfDay();
+        $endDate   = Carbon::today()->endOfDay();
 
         if ($period === '7days') {
             $startDate = Carbon::now()->subDays(6)->startOfDay();
-            $endDate = Carbon::now()->endOfDay();
+            $endDate   = Carbon::now()->endOfDay();
         } elseif ($period === '30days') {
             $startDate = Carbon::now()->subDays(29)->startOfDay();
-            $endDate = Carbon::now()->endOfDay();
+            $endDate   = Carbon::now()->endOfDay();
         } elseif ($period === 'custom' && $date) {
             $startDate = Carbon::parse($date)->startOfDay();
-            $endDate = Carbon::parse($date)->endOfDay();
+            $endDate   = Carbon::parse($date)->endOfDay();
         }
 
         $orders = Order::with(['classRoom', 'items.product'])
@@ -150,16 +157,21 @@ class OrderController extends Controller
             ->get();
 
         return response()->json([
-            'status' => 'success', 
-            'data' => $orders
+            'status' => 'success',
+            'data'   => $orders
         ]);
     }
 
     /**
-     * Update status pesanan
+     * Update status pesanan / pembayaran
      */
     public function updateStatus(Request $request, $id)
     {
+        $request->validate([
+            'status'         => 'nullable|in:PENDING,DIPROSES,DIANTAR,SELESAI',
+            'payment_status' => 'nullable|in:UNPAID,PAID',
+        ]);
+
         try {
             $order = Order::findOrFail($id);
 
@@ -174,40 +186,45 @@ class OrderController extends Controller
             $order->save();
 
             return response()->json([
-                'status' => 'success',
-                'message' => 'Status berhasil diubah!'
+                'status'  => 'success',
+                'message' => 'Status berhasil diubah!',
+                'data'    => $order
             ]);
 
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
             return response()->json([
-                'status' => 'error',
+                'status'  => 'error',
                 'message' => 'Error dari Server: ' . $e->getMessage()
             ], 500);
         }
     }
 
     /**
-     * Hapus pesanan (Fitur percobaan/cleaning data)
+     * Hapus pesanan beserta item-item terkait
      */
     public function destroy($id)
     {
+        DB::beginTransaction();
         try {
             $order = Order::findOrFail($id);
-            
-            // Hapus order_items terkait dulu
+
+            // Hapus order_items terkait
             $order->items()->delete();
-            
+
             // Hapus order utama
             $order->delete();
 
+            DB::commit();
+
             return response()->json([
-                'status' => 'success',
+                'status'  => 'success',
                 'message' => 'Pesanan berhasil dihapus!'
             ]);
 
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
+            DB::rollBack();
             return response()->json([
-                'status' => 'error',
+                'status'  => 'error',
                 'message' => 'Gagal menghapus pesanan: ' . $e->getMessage()
             ], 500);
         }

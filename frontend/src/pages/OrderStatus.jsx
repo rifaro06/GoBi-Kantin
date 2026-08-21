@@ -6,8 +6,11 @@ import {
   Loader2, X, QrCode, MapPin, User, Phone, ShoppingBag, Receipt, Copy, Check, ChevronRight, MessageCircle
 } from 'lucide-react';
 
-export default function OrderStatus() {
+const ADMIN_WA_NUMBER = "62881025337675";
 
+const formatRupiah = (num) => Number(num || 0).toLocaleString('id-ID');
+
+export default function OrderStatus() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
@@ -16,18 +19,14 @@ export default function OrderStatus() {
 
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [copied, setCopied] = useState(false);
-
-  // State untuk menyimpan URL QRIS Global dari Settings
   const [globalQrisUrl, setGlobalQrisUrl] = useState('');
-
-  const adminWhatsAppNumber = "62881025337675"; // Nomor WA Admin Kantin
 
   // Ambil URL QRIS terbaru dari Admin secara otomatis
   useEffect(() => {
     axios.get('/settings')
       .then(res => {
         const data = res.data.data || res.data;
-        if (data.qris_image_url) {
+        if (data?.qris_image_url) {
           setGlobalQrisUrl(data.qris_image_url);
         }
       })
@@ -43,12 +42,12 @@ export default function OrderStatus() {
     setOrders([]);
 
     try {
-      const response = await axios.get(`/orders/track?query=${searchQuery}`);
+      const response = await axios.get(`/orders/track?query=${encodeURIComponent(searchQuery.trim())}`);
       setOrders(response.data.data || []);
     } catch (error) {
       console.error("Gagal mengambil data pesanan", error);
 
-      // Dummy data pengujian
+      // Dummy data pengujian jika backend offline / test
       if (searchQuery === '089673746693' || searchQuery.toUpperCase().startsWith('GB-')) {
         setOrders([
           {
@@ -111,11 +110,10 @@ export default function OrderStatus() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Kirim Konfirmasi Pembayaran QRIS
   const handleWhatsAppConfirm = () => {
     if (!selectedOrder) return;
     const className = selectedOrder.class_room?.name || 'Kelas';
-    const totalFormatted = parseFloat(selectedOrder.total_amount || 0).toLocaleString('id-ID');
+    const totalFormatted = formatRupiah(selectedOrder.total_amount);
 
     const textMessage =
       `Halo Admin GoBi Kantin, saya ingin konfirmasi pembayaran QRIS.
@@ -128,11 +126,9 @@ export default function OrderStatus() {
 
 Berikut saya lampirkan foto/screenshot bukti pembayaran QRIS. Terima kasih!`;
 
-    const encodedText = encodeURIComponent(textMessage);
-    window.open(`https://wa.me/${adminWhatsAppNumber}?text=${encodedText}`, '_blank');
+    window.open(`https://wa.me/${ADMIN_WA_NUMBER}?text=${encodeURIComponent(textMessage)}`, '_blank');
   };
 
-  // Hubungi Kantin saat pesanan Dimasak / Proses
   const handleWhatsAppContact = () => {
     if (!selectedOrder) return;
     const className = selectedOrder.class_room?.name || 'Kelas';
@@ -151,14 +147,12 @@ Berikut saya lampirkan foto/screenshot bukti pembayaran QRIS. Terima kasih!`;
 
 Ada yang ingin saya tanyakan terkait pesanan ini. Terima kasih!`;
 
-    const encodedText = encodeURIComponent(textMessage);
-    window.open(`https://wa.me/${adminWhatsAppNumber}?text=${encodedText}`, '_blank');
+    window.open(`https://wa.me/${ADMIN_WA_NUMBER}?text=${encodeURIComponent(textMessage)}`, '_blank');
   };
 
   return (
     <div className="min-h-[100dvh] bg-slate-100/70 pb-16 font-sans">
-
-      {/* Header Responsif */}
+      {/* Header */}
       <div className="bg-white/90 backdrop-blur-md border-b border-slate-200 sticky top-0 z-20 shadow-xs">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3 md:gap-4">
@@ -178,8 +172,7 @@ Ada yang ingin saya tanyakan terkait pesanan ini. Terima kasih!`;
       </div>
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 md:pt-8 space-y-6">
-
-        {/* Form Pencarian Hero */}
+        {/* Form Pencarian */}
         <div className="bg-white p-5 sm:p-7 md:p-8 rounded-3xl shadow-xs border border-slate-200/80 space-y-3 md:space-y-4">
           <div>
             <label className="text-xs sm:text-sm font-bold text-slate-600 uppercase tracking-wider block">
@@ -212,15 +205,15 @@ Ada yang ingin saya tanyakan terkait pesanan ini. Terima kasih!`;
             </div>
             <button
               type="submit"
-              disabled={loading || !searchQuery}
+              disabled={loading || !searchQuery.trim()}
               className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white px-7 py-3.5 sm:py-4 rounded-2xl font-bold text-sm transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 shrink-0"
             >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <> <Search className="w-4 h-4" /> Cari Pesanan </>}
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Search className="w-4 h-4" /> Cari Pesanan</>}
             </button>
           </form>
         </div>
 
-        {/* State Pencarian Kosong */}
+        {/* Status Tidak Ditemukan */}
         {hasSearched && !loading && orders.length === 0 && (
           <div className="text-center py-12 bg-white rounded-3xl border border-slate-200/80 p-6 shadow-xs space-y-3">
             <div className="w-14 h-14 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto">
@@ -233,7 +226,7 @@ Ada yang ingin saya tanyakan terkait pesanan ini. Terima kasih!`;
           </div>
         )}
 
-        {/* Hasil Pencarian */}
+        {/* Daftar Hasil Search */}
         {orders.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center justify-between px-1">
@@ -276,7 +269,7 @@ Ada yang ingin saya tanyakan terkait pesanan ini. Terima kasih!`;
                           Total Tagihan
                         </span>
                         <span className="font-black text-emerald-600 text-base sm:text-lg">
-                          Rp {Number(order.total_amount).toLocaleString('id-ID')}
+                          Rp {formatRupiah(order.total_amount)}
                         </span>
                       </div>
 
@@ -287,7 +280,6 @@ Ada yang ingin saya tanyakan terkait pesanan ini. Terima kasih!`;
                         Detail Pesanan <ChevronRight className="w-4 h-4 text-slate-300" />
                       </button>
                     </div>
-
                   </div>
                 );
               })}
@@ -296,7 +288,7 @@ Ada yang ingin saya tanyakan terkait pesanan ini. Terima kasih!`;
         )}
       </main>
 
-      {/* MODAL DETAIL PESANAN */}
+      {/* Modal Detail Pesanan */}
       {selectedOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
           <div className="bg-white w-full max-w-md sm:max-w-lg rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col border border-slate-100 transition-all">
@@ -312,7 +304,7 @@ Ada yang ingin saya tanyakan terkait pesanan ini. Terima kasih!`;
               </button>
             </div>
 
-            {/* Scrollable Body */}
+            {/* Content Modal */}
             <div className="p-6 overflow-y-auto space-y-5 text-xs sm:text-sm text-slate-700">
 
               {/* Box Nomor Pesanan */}
@@ -342,7 +334,7 @@ Ada yang ingin saya tanyakan terkait pesanan ini. Terima kasih!`;
                 </span>
               </div>
 
-              {/* TOMBOL CHAT KANTIN (MUNCUL SAAT DIMASAK / SUDAH DIBAYAR NAMPUN BELUM SELESAI) */}
+              {/* Tombol Chat WA Jika Diproses / Belum Selesai */}
               {(selectedOrder.status === 'DIPROSES' || (selectedOrder.payment_status === 'PAID' && selectedOrder.status !== 'SELESAI')) && (
                 <div className="bg-emerald-50/90 border border-emerald-200/80 p-3.5 rounded-2xl flex items-center justify-between gap-3">
                   <div className="space-y-0.5">
@@ -360,7 +352,7 @@ Ada yang ingin saya tanyakan terkait pesanan ini. Terima kasih!`;
                 </div>
               )}
 
-              {/* QRIS DINAMIS & TOMBOL WA (JIKA UNPAID) */}
+              {/* QRIS & WA Confirm jika UNPAID */}
               {selectedOrder.payment_method === 'QRIS' && selectedOrder.payment_status === 'UNPAID' && (
                 <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl text-center space-y-3">
                   <div className="flex items-center justify-center gap-1.5 text-amber-800 font-bold text-xs sm:text-sm">
@@ -386,9 +378,7 @@ Ada yang ingin saya tanyakan terkait pesanan ini. Terima kasih!`;
                     type="button"
                     className="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md text-xs mt-1"
                   >
-                    <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                      <path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984 0 1.758.459 3.474 1.33 4.982l-1.413 5.161 5.282-1.385a9.924 9.924 0 004.789 1.226h.005c5.504 0 9.987-4.478 9.988-9.984 0-2.668-1.039-5.176-2.926-7.062a9.925 9.925 0 00-7.064-2.922zm5.828 14.175c-.244.688-1.427 1.314-1.968 1.378-.512.062-1.183.088-3.414-.834-2.853-1.178-4.689-4.082-4.832-4.272-.143-.19-1.161-1.545-1.161-2.946 0-1.401.734-2.091.995-2.378.261-.287.568-.359.758-.359.19 0 .38.002.545.009.176.008.414-.067.647.493.244.588.831 2.029.903 2.176.072.147.12.32.024.512-.096.191-.144.31-.287.48-.143.17-.301.38-.43.51-.143.143-.292.298-.126.583.167.285.741 1.223 1.589 1.979 1.091.972 2.011 1.274 2.296 1.417.285.143.452.119.619-.071.167-.19.714-.832.905-1.118.19-.286.38-.238.642-.143.262.095 1.666.786 1.952.929.285.143.476.214.547.333.071.119.071.688-.173 1.376z" />
-                    </svg>
+                    <MessageCircle className="w-4 h-4" />
                     <span>Kirim Bukti Bayar via WA</span>
                   </button>
                 </div>
@@ -429,6 +419,11 @@ Ada yang ingin saya tanyakan terkait pesanan ini. Terima kasih!`;
                         <p className="font-extrabold text-slate-800">
                           {item.qty}x <span className="font-medium text-slate-700">{item.product?.name || item.name}</span>
                         </p>
+                        {item.variant && (
+                          <p className="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200/60 rounded px-2 py-0.5 mt-1 inline-block mr-1">
+                            <span className="font-bold">Varian:</span> {item.variant}
+                          </p>
+                        )}
                         {item.note && (
                           <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200/60 rounded px-2 py-0.5 mt-1 inline-block">
                             <span className="font-bold">Catatan:</span> {item.note}
@@ -436,7 +431,7 @@ Ada yang ingin saya tanyakan terkait pesanan ini. Terima kasih!`;
                         )}
                       </div>
                       <span className="font-bold text-slate-800 shrink-0">
-                        Rp {((item.price || 0) * (item.qty || 1)).toLocaleString('id-ID')}
+                        Rp {formatRupiah((item.price || 0) * (item.qty || 1))}
                       </span>
                     </div>
                   ))}
@@ -460,14 +455,14 @@ Ada yang ingin saya tanyakan terkait pesanan ini. Terima kasih!`;
                 {selectedOrder.delivery_fee > 0 && (
                   <div className="flex justify-between text-slate-500">
                     <span>Biaya Antar</span>
-                    <span className="font-semibold text-slate-700">Rp {Number(selectedOrder.delivery_fee).toLocaleString('id-ID')}</span>
+                    <span className="font-semibold text-slate-700">Rp {formatRupiah(selectedOrder.delivery_fee)}</span>
                   </div>
                 )}
 
                 <div className="flex justify-between text-base sm:text-lg font-bold text-slate-800 pt-3 border-t border-slate-100">
                   <span>Total Harga</span>
                   <span className="text-emerald-600 font-black">
-                    Rp {Number(selectedOrder.total_amount).toLocaleString('id-ID')}
+                    Rp {formatRupiah(selectedOrder.total_amount)}
                   </span>
                 </div>
               </div>
@@ -487,7 +482,6 @@ Ada yang ingin saya tanyakan terkait pesanan ini. Terima kasih!`;
           </div>
         </div>
       )}
-
     </div>
   );
 }

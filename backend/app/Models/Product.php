@@ -13,10 +13,11 @@ class Product extends Model
         'name', 
         'category_id', 
         'price', 
-        'handling_fee', // <-- TAMBAHKAN INI
+        'handling_fee', // <-- TETAP ADA
         'image', 
         'description',
-        'is_available'
+        'is_available',
+        'variants' // <-- TAMBAHAN VARIAN
     ];
 
     protected $casts = [

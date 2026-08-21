@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class OrderItem extends Model
 {
@@ -11,8 +12,24 @@ class OrderItem extends Model
 
     protected $guarded = ['id'];
 
-    public function product()
+    protected $casts = [
+        'qty' => 'integer',
+        'price' => 'float',
+    ];
+
+    /**
+     * Relasi ke model Product
+     */
+    public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    /**
+     * Relasi ke model Order
+     */
+    public function order(): BelongsTo
+    {
+        return $this->belongsTo(Order::class);
     }
 }

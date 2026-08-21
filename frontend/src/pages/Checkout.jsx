@@ -60,11 +60,11 @@ export default function Checkout() {
     return savedData
       ? JSON.parse(savedData)
       : {
-          name: '',
-          phone: '',
-          class_room_id: '',
-          notes: ''
-        };
+        name: '',
+        phone: '',
+        class_room_id: '',
+        notes: ''
+      };
   });
 
   const [paymentMethod, setPaymentMethod] = useState('QRIS');
@@ -178,7 +178,7 @@ export default function Checkout() {
       .catch((err) => console.error('Gagal mengambil pengaturan ongkir:', err));
   }, []);
 
-  // KALKULASI ONGKIR DINAMIS (Integrasi fee_type dari DB + Fallback Legacy)
+  // KALKULASI ONGKIR DINAMIS
   useEffect(() => {
     if (cartItems.length === 0) {
       setDeliveryFee(0);
@@ -219,19 +219,17 @@ export default function Checkout() {
       const catName = String(item.category_name || item.category?.name || '').toLowerCase();
       const catId = item.category_id || item.category?.id;
 
-      // Cari kategori yang cocok di database
       const matchedCategory = categoriesList.find(
         (c) => c.id === catId || (c.name && c.name.toLowerCase() === catName)
       );
 
-      // Deteksi fee_type dari database, atau fallback berdasarkan nama kategori jika tidak diset
       const feeType =
         matchedCategory?.fee_type ||
         (catName.includes('makan')
           ? 'tier_qty'
           : catName.includes('minum') || catName.includes('snack') || catName.includes('cemilan')
-          ? 'threshold_nominal'
-          : 'flat');
+            ? 'threshold_nominal'
+            : 'flat');
 
       if (feeType === 'tier_qty') {
         foodQty += qty;
@@ -263,7 +261,6 @@ export default function Checkout() {
       snackFeeCalc = snackSub >= snackThreshold ? snackFee : snackBaseFee;
     }
 
-    // Ambil nilai tertinggi dari hasil kalkulasi
     let finalFee = Math.max(foodFeeCalc, drinkFeeCalc, snackFeeCalc, dynamicMaxCategoryFee);
 
     if (foodQty >= 1 && totalItems > globalItemMax) {
@@ -384,10 +381,18 @@ export default function Checkout() {
           const itemId = item.cartId || item.id;
           const noteText =
             localNotes[itemId] !== undefined ? localNotes[itemId] : item.note || formData.notes || '';
+
+          const selectedVariant = Array.isArray(item.variants) && item.variants.length > 0
+            ? item.variants.join(', ')
+            : (item.variant || '');
+
           return {
             id: item.id,
+            menu_id: item.id,
             qty: item.qty,
+            quantity: item.qty,
             price: item.price,
+            variant: selectedVariant,
             note: noteText
           };
         })
@@ -398,9 +403,10 @@ export default function Checkout() {
       if (clearCart) clearCart();
       localStorage.removeItem('gobi_checkout_form');
 
-      const orderData = response.data.data;
-      if (orderData && orderData.order_number) {
-        navigate(`/track/${orderData.order_number}`, { state: { order: orderData } });
+      const orderData = response.data.data || response.data;
+      if (orderData && (orderData.order_number || orderData.id)) {
+        const trackingId = orderData.order_number || orderData.id;
+        navigate(`/track/${trackingId}`, { state: { order: orderData } });
       } else {
         setErrors({ general: 'Pesanan berhasil dibuat, tetapi nomor resi tidak terdeteksi.' });
         navigate('/');
@@ -477,11 +483,10 @@ export default function Checkout() {
                           setFormData({ ...formData, name: sanitizedValue });
                           if (errors.name) setErrors((prev) => ({ ...prev, name: null }));
                         }}
-                        className={`w-full pl-9 pr-4 py-2.5 bg-slate-50 border rounded-xl text-sm focus:outline-none focus:ring-2 ${
-                          errors.name
-                            ? 'border-rose-500 focus:ring-rose-400'
-                            : 'border-slate-200 focus:ring-emerald-500'
-                        }`}
+                        className={`w-full pl-9 pr-4 py-2.5 bg-slate-50 border rounded-xl text-sm focus:outline-none focus:ring-2 ${errors.name
+                          ? 'border-rose-500 focus:ring-rose-400'
+                          : 'border-slate-200 focus:ring-emerald-500'
+                          }`}
                       />
                     </div>
                     {errors.name && <p className="text-[11px] font-bold text-rose-500 mt-1.5 pl-1">• {errors.name}</p>}
@@ -501,11 +506,10 @@ export default function Checkout() {
                           setFormData({ ...formData, phone: sanitizedValue });
                           if (errors.phone) setErrors((prev) => ({ ...prev, phone: null }));
                         }}
-                        className={`w-full pl-9 pr-4 py-2.5 bg-slate-50 border rounded-xl text-sm focus:outline-none focus:ring-2 ${
-                          errors.phone
-                            ? 'border-rose-500 focus:ring-rose-400'
-                            : 'border-slate-200 focus:ring-emerald-500'
-                        }`}
+                        className={`w-full pl-9 pr-4 py-2.5 bg-slate-50 border rounded-xl text-sm focus:outline-none focus:ring-2 ${errors.phone
+                          ? 'border-rose-500 focus:ring-rose-400'
+                          : 'border-slate-200 focus:ring-emerald-500'
+                          }`}
                       />
                     </div>
                     {errors.phone && <p className="text-[11px] font-bold text-rose-500 mt-1.5 pl-1">• {errors.phone}</p>}
@@ -521,11 +525,10 @@ export default function Checkout() {
                           setFormData({ ...formData, class_room_id: e.target.value });
                           if (errors.class_room_id) setErrors((prev) => ({ ...prev, class_room_id: null }));
                         }}
-                        className={`w-full pl-9 pr-4 py-2.5 bg-slate-50 border rounded-xl text-sm focus:outline-none focus:ring-2 appearance-none text-slate-700 font-semibold cursor-pointer ${
-                          errors.class_room_id
-                            ? 'border-rose-500 focus:ring-rose-400'
-                            : 'border-slate-200 focus:ring-emerald-500'
-                        }`}
+                        className={`w-full pl-9 pr-4 py-2.5 bg-slate-50 border rounded-xl text-sm focus:outline-none focus:ring-2 appearance-none text-slate-700 font-semibold cursor-pointer ${errors.class_room_id
+                          ? 'border-rose-500 focus:ring-rose-400'
+                          : 'border-slate-200 focus:ring-emerald-500'
+                          }`}
                       >
                         <option value="">-- Pilih Kelas --</option>
                         {classRooms.map((room) => (
@@ -563,12 +566,26 @@ export default function Checkout() {
                             alt={item.name}
                             className="w-14 h-14 rounded-2xl object-cover bg-slate-100 border border-slate-200 shrink-0"
                           />
+
+                          {/* AREA NAMA, HARGA, DAN BADGE VARIAN */}
                           <div className="flex-1 min-w-0">
                             <h4 className="font-bold text-slate-800 text-sm truncate">{item.name}</h4>
                             <p className="text-xs font-semibold text-emerald-600 mt-0.5">
                               Rp {Number(item.price).toLocaleString('id-ID')}
                             </p>
+
+                            {/* BADGE VARIAN */}
+                            {Array.isArray(item.variants) && item.variants.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1.5">
+                                {item.variants.map((v, i) => (
+                                  <span key={i} className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md border border-slate-200">
+                                    {v}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
+
                           <div className="flex items-center gap-2">
                             <div className="flex items-center bg-slate-100 rounded-xl p-1 border border-slate-200">
                               <button
@@ -776,11 +793,10 @@ export default function Checkout() {
                       setPaymentMethod('QRIS');
                       if (errors.cashPaid) setErrors((prev) => ({ ...prev, cashPaid: null }));
                     }}
-                    className={`p-3.5 rounded-2xl border-2 flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
-                      paymentMethod === 'QRIS'
-                        ? 'border-emerald-500 bg-emerald-50/50 text-emerald-700 shadow-xs'
-                        : 'border-slate-200 text-slate-500 hover:border-slate-300'
-                    }`}
+                    className={`p-3.5 rounded-2xl border-2 flex flex-col items-center gap-1.5 transition-all cursor-pointer ${paymentMethod === 'QRIS'
+                      ? 'border-emerald-500 bg-emerald-50/50 text-emerald-700 shadow-xs'
+                      : 'border-slate-200 text-slate-500 hover:border-slate-300'
+                      }`}
                   >
                     <QrCode className="w-6 h-6" />
                     <span className="text-xs font-bold">QRIS</span>
@@ -788,11 +804,10 @@ export default function Checkout() {
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('CASH')}
-                    className={`p-3.5 rounded-2xl border-2 flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
-                      paymentMethod === 'CASH'
-                        ? 'border-emerald-500 bg-emerald-50/50 text-emerald-700 shadow-xs'
-                        : 'border-slate-200 text-slate-500 hover:border-slate-300'
-                    }`}
+                    className={`p-3.5 rounded-2xl border-2 flex flex-col items-center gap-1.5 transition-all cursor-pointer ${paymentMethod === 'CASH'
+                      ? 'border-emerald-500 bg-emerald-50/50 text-emerald-700 shadow-xs'
+                      : 'border-slate-200 text-slate-500 hover:border-slate-300'
+                      }`}
                   >
                     <Banknote className="w-6 h-6" />
                     <span className="text-xs font-bold">Tunai (Cash)</span>
@@ -817,11 +832,10 @@ export default function Checkout() {
                           setCashPaid(e.target.value);
                           if (errors.cashPaid) setErrors((prev) => ({ ...prev, cashPaid: null }));
                         }}
-                        className={`w-full px-4 py-2.5 bg-white border rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 ${
-                          errors.cashPaid
-                            ? 'border-rose-500 focus:ring-rose-400'
-                            : 'border-slate-200 focus:ring-emerald-500'
-                        }`}
+                        className={`w-full px-4 py-2.5 bg-white border rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 ${errors.cashPaid
+                          ? 'border-rose-500 focus:ring-rose-400'
+                          : 'border-slate-200 focus:ring-emerald-500'
+                          }`}
                       />
                       {errors.cashPaid && (
                         <p className="text-[11px] font-bold text-rose-500 mt-1.5 pl-1">• {errors.cashPaid}</p>
@@ -854,11 +868,10 @@ export default function Checkout() {
                     </div>
                     {cashPaid !== '' && (
                       <div
-                        className={`p-3 rounded-xl border flex justify-between items-center ${
-                          changeAmount >= 0
-                            ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                            : 'bg-rose-50 border-rose-200 text-rose-700'
-                        }`}
+                        className={`p-3 rounded-xl border flex justify-between items-center ${changeAmount >= 0
+                          ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                          : 'bg-rose-50 border-rose-200 text-rose-700'
+                          }`}
                       >
                         <span className="text-xs font-bold">
                           {changeAmount >= 0 ? 'Kembalian:' : 'Uang Kurang:'}

@@ -13,16 +13,16 @@ export const CartProvider = ({ children }) => {
     }, [cartItems]);
 
     // FUNGSI TAMBAH KE KERANJANG
-    const addToCart = (product, qty = 1, note = '') => {
+    const addToCart = (product, qty = 1, note = '', variants = []) => {
         const cleanNote = note ? note.trim() : '';
-        // Buat ID Unik berbasis ID Produk + Catatan
-        const cartId = `${product.id}-${cleanNote.toLowerCase()}`;
+        // Buat ID Unik berbasis ID Produk + Varian + Catatan agar tidak tertukar
+        const variantString = variants.length > 0 ? variants.sort().join('-') : '';
+        const cartId = `${product.id}-${variantString}-${cleanNote.toLowerCase()}`;
 
         setCartItems((prevItems) => {
             const itemIndex = prevItems.findIndex((item) => item.cartId === cartId);
 
             if (itemIndex >= 0) {
-                // Jika produk DAN catatannya persis sama, cukup tambahkan jumlahnya
                 const newItems = [...prevItems];
                 newItems[itemIndex] = {
                     ...newItems[itemIndex],
@@ -31,14 +31,14 @@ export const CartProvider = ({ children }) => {
                 return newItems;
             }
 
-            // Jika catatannya beda (misal: satu 'pedas', satu 'tidak pedas'), buat baris baru
             return [
                 ...prevItems,
                 {
                     ...product,
                     cartId: cartId,
                     qty: qty,
-                    note: cleanNote
+                    note: cleanNote,
+                    variants: variants // <-- Simpan array varian secara mandiri
                 }
             ];
         });

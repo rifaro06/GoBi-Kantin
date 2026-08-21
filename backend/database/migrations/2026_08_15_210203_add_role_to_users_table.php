@@ -9,7 +9,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('role')->default('admin')->after('password');
+            // Cek dulu, kalau kolom 'role' belum ada, baru eksekusi.
+            // Kalau udah ada, sistem gak akan ngubah apa-apa.
+            if (!Schema::hasColumn('users', 'role')) {
+                $table->string('role')->default('admin')->after('password');
+            }
         });
     }
 

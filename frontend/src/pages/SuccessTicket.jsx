@@ -3,8 +3,12 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
   CheckCircle2, Home, Receipt, ShoppingBag, MapPin,
-  Calendar, Copy, Check, QrCode, User
+  Calendar, Copy, Check, QrCode, User, MessageCircle
 } from 'lucide-react';
+
+const ADMIN_WA_NUMBER = "62881025337675";
+
+const formatRupiah = (num) => Number(num || 0).toLocaleString('id-ID');
 
 export default function SuccessTicket() {
   const location = useLocation();
@@ -14,9 +18,6 @@ export default function SuccessTicket() {
   const [copied, setCopied] = useState(false);
   const [globalQrisUrl, setGlobalQrisUrl] = useState('');
 
-  // Nomor WA Admin Kantin
-  const adminWhatsAppNumber = "62881025337675"; // Nomor WA Admin Kantin
-
   useEffect(() => {
     localStorage.removeItem('gobi_cart');
 
@@ -24,7 +25,7 @@ export default function SuccessTicket() {
     axios.get('/settings')
       .then(res => {
         const data = res.data.data || res.data;
-        if (data.qris_image_url) {
+        if (data?.qris_image_url) {
           setGlobalQrisUrl(data.qris_image_url);
         }
       })
@@ -69,7 +70,7 @@ export default function SuccessTicket() {
 
   const handleWhatsAppConfirm = () => {
     const className = order.class_room?.name || 'Kelas';
-    const totalFormatted = parseFloat(order.total_amount || 0).toLocaleString('id-ID');
+    const totalFormatted = formatRupiah(order.total_amount);
 
     const textMessage =
       `Halo Admin GoBi Kantin, saya ingin konfirmasi pembayaran QRIS.
@@ -82,20 +83,16 @@ export default function SuccessTicket() {
 
 Berikut saya lampirkan foto/screenshot bukti pembayaran QRIS. Terima kasih!`;
 
-    const encodedText = encodeURIComponent(textMessage);
-    window.open(`https://wa.me/${adminWhatsAppNumber}?text=${encodedText}`, '_blank');
+    window.open(`https://wa.me/${ADMIN_WA_NUMBER}?text=${encodeURIComponent(textMessage)}`, '_blank');
   };
 
-  // MENGAMBIL GAMBAR QRIS DINAMIS
   const qrisImageUrl = order?.qris_image_url || order?.qris_image || globalQrisUrl || 'https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg';
 
   return (
     <div className="min-h-[100dvh] bg-slate-100/80 sm:bg-slate-100 py-4 sm:py-8 px-3 sm:px-6 flex flex-col items-center justify-center font-sans">
-
-      {/* TIKET STRUK UTAMA */}
       <div className="bg-white w-full max-w-md rounded-3xl shadow-xl shadow-slate-200/80 overflow-hidden border border-slate-200/80 transition-all">
 
-        {/* HEADER HIJAU GRADIENT */}
+        {/* Header Tiket */}
         <div className="bg-gradient-to-br from-emerald-600 via-emerald-600 to-teal-700 p-6 text-white text-center space-y-2 relative overflow-hidden">
           <div className="absolute -right-8 -top-8 w-28 h-28 bg-white/10 rounded-full blur-xl pointer-events-none" />
           <div className="absolute -left-8 -bottom-8 w-28 h-28 bg-emerald-400/20 rounded-full blur-xl pointer-events-none" />
@@ -110,7 +107,7 @@ Berikut saya lampirkan foto/screenshot bukti pembayaran QRIS. Terima kasih!`;
           </p>
         </div>
 
-        {/* SECTION NOMOR PESANAN */}
+        {/* Section Nomor Pesanan */}
         <div className="bg-emerald-50/70 p-4 sm:p-5 border-b border-dashed border-emerald-200/80 text-center relative">
           <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 block mb-1.5">
             Nomor Pesanan
@@ -136,10 +133,10 @@ Berikut saya lampirkan foto/screenshot bukti pembayaran QRIS. Terima kasih!`;
           )}
         </div>
 
-        {/* DETAIL TRANSAKSI */}
+        {/* Detail Transaksi */}
         <div className="p-5 sm:p-6 space-y-4 text-xs sm:text-sm text-slate-700">
 
-          {/* BANNER QRIS DINAMIS (JIKA METODE PAYMENT = QRIS) */}
+          {/* QRIS Banner */}
           {order.payment_method === 'QRIS' && (
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-col items-center text-center space-y-3 mb-2 shadow-xs">
               <div className="flex items-center justify-center gap-1.5 text-emerald-700 font-bold text-xs">
@@ -160,21 +157,18 @@ Berikut saya lampirkan foto/screenshot bukti pembayaran QRIS. Terima kasih!`;
                 Silakan selesaikan pembayaran. Pesanan diproses setelah pembayaran diverifikasi.
               </p>
 
-              {/* TOMBOL KONFIRMASI WA */}
               <button
                 onClick={handleWhatsAppConfirm}
                 type="button"
                 className="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-600/20 text-xs mt-1"
               >
-                <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                  <path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984 0 1.758.459 3.474 1.33 4.982l-1.413 5.161 5.282-1.385a9.924 9.924 0 004.789 1.226h.005c5.504 0 9.987-4.478 9.988-9.984 0-2.668-1.039-5.176-2.926-7.062a9.925 9.925 0 00-7.064-2.922zm5.828 14.175c-.244.688-1.427 1.314-1.968 1.378-.512.062-1.183.088-3.414-.834-2.853-1.178-4.689-4.082-4.832-4.272-.143-.19-1.161-1.545-1.161-2.946 0-1.401.734-2.091.995-2.378.261-.287.568-.359.758-.359.19 0 .38.002.545.009.176.008.414-.067.647.493.244.588.831 2.029.903 2.176.072.147.12.32.024.512-.096.191-.144.31-.287.48-.143.17-.301.38-.43.51-.143.143-.292.298-.126.583.167.285.741 1.223 1.589 1.979 1.091.972 2.011 1.274 2.296 1.417.285.143.452.119.619-.071.167-.19.714-.832.905-1.118.19-.286.38-.238.642-.143.262.095 1.666.786 1.952.929.285.143.476.214.547.333.071.119.071.688-.173 1.376z" />
-                </svg>
+                <MessageCircle className="w-4 h-4" />
                 <span>Kirim Bukti Bayar via WA</span>
               </button>
             </div>
           )}
 
-          {/* INFORMASI WAKTU & PEMESAN */}
+          {/* Info Pemesan & Waktu */}
           <div className="space-y-2.5">
             <div className="flex justify-between items-center pb-2.5 border-b border-slate-100">
               <span className="text-slate-500 text-xs flex items-center gap-1.5">
@@ -200,7 +194,7 @@ Berikut saya lampirkan foto/screenshot bukti pembayaran QRIS. Terima kasih!`;
             </div>
           </div>
 
-          {/* DAFTAR ITEMS */}
+          {/* Daftar Items */}
           <div className="pt-2">
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
               <ShoppingBag className="w-3.5 h-3.5 text-emerald-600" /> Daftar Pesanan
@@ -211,7 +205,12 @@ Berikut saya lampirkan foto/screenshot bukti pembayaran QRIS. Terima kasih!`;
                 <div key={idx} className="flex justify-between items-start text-xs border-b border-slate-100 last:border-0 pb-2 last:pb-0">
                   <div className="pr-2">
                     <span className="font-extrabold text-slate-800">{item.qty}x</span>{' '}
-                    <span className="font-medium text-slate-700">{item.product?.name || 'Item'}</span>
+                    <span className="font-medium text-slate-700">{item.product?.name || item.name || 'Item'}</span>
+                    {item.variant && (
+                      <p className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200/60 rounded-md px-2 py-0.5 mt-1 inline-block mr-1">
+                        <span className="font-bold">Varian:</span> {item.variant}
+                      </p>
+                    )}
                     {item.note && (
                       <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200/60 rounded-md px-2 py-0.5 mt-1 inline-block">
                         <span className="font-bold">Catatan:</span> {item.note}
@@ -219,14 +218,14 @@ Berikut saya lampirkan foto/screenshot bukti pembayaran QRIS. Terima kasih!`;
                     )}
                   </div>
                   <span className="font-bold text-slate-800 shrink-0">
-                    Rp {((item.price || 0) * (item.qty || 1)).toLocaleString('id-ID')}
+                    Rp {formatRupiah((item.price || 0) * (item.qty || 1))}
                   </span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* RINCIAN PEMBAYARAN */}
+          {/* Rincian Bayar */}
           <div className="pt-2 border-t border-slate-200 space-y-2">
             <div className="flex justify-between text-xs text-slate-500">
               <span>Metode Pembayaran</span>
@@ -240,13 +239,13 @@ Berikut saya lampirkan foto/screenshot bukti pembayaran QRIS. Terima kasih!`;
                 <div className="flex justify-between text-xs text-slate-500">
                   <span>Uang Tunai Disiapkan</span>
                   <span className="font-semibold text-slate-700">
-                    Rp {parseFloat(order.cash_amount || 0).toLocaleString('id-ID')}
+                    Rp {formatRupiah(order.cash_amount)}
                   </span>
                 </div>
                 <div className="flex justify-between text-xs text-slate-500">
                   <span>Kembalian dari Kurir</span>
                   <span className="font-semibold text-slate-700">
-                    Rp {parseFloat(order.change_amount || 0).toLocaleString('id-ID')}
+                    Rp {formatRupiah(order.change_amount)}
                   </span>
                 </div>
               </>
@@ -256,7 +255,7 @@ Berikut saya lampirkan foto/screenshot bukti pembayaran QRIS. Terima kasih!`;
               <div className="flex justify-between text-xs text-slate-500">
                 <span>Biaya Antar</span>
                 <span className="font-semibold text-slate-700">
-                  Rp {parseFloat(order.delivery_fee).toLocaleString('id-ID')}
+                  Rp {formatRupiah(order.delivery_fee)}
                 </span>
               </div>
             )}
@@ -264,14 +263,14 @@ Berikut saya lampirkan foto/screenshot bukti pembayaran QRIS. Terima kasih!`;
             <div className="flex justify-between items-center text-sm font-bold text-slate-800 pt-2.5 border-t border-slate-100">
               <span>Total Tagihan</span>
               <span className="text-base font-black text-emerald-600">
-                Rp {parseFloat(order.total_amount || 0).toLocaleString('id-ID')}
+                Rp {formatRupiah(order.total_amount)}
               </span>
             </div>
           </div>
 
         </div>
 
-        {/* FOOTER BUTTON */}
+        {/* Footer */}
         <div className="p-4 sm:p-5 bg-slate-50/80 border-t border-slate-100">
           <button
             onClick={() => navigate('/')}

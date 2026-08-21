@@ -9,16 +9,14 @@ export default function MenusAdmin() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all'); // State Filter Kategori
+  const [selectedCategory, setSelectedCategory] = useState('all');
 
-  // State untuk Modal Form
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
-    name: '', category_id: '', price: '', handling_fee: '', description: '', image: '', is_available: true
+    name: '', category_id: '', price: '', handling_fee: '', description: '', variants: '', image: '', is_available: true
   });
 
-  // HELPER: Mencegah gambar pecah
   const getImageUrl = (url) => {
     if (!url) return 'https://placehold.co/400x300?text=No+Image';
     if (typeof url !== 'string') return url;
@@ -42,7 +40,6 @@ export default function MenusAdmin() {
     fetchData();
   }, []);
 
-  // Buka modal untuk nambah menu
   const handleAdd = () => {
     setEditingId(null);
     setFormData({ 
@@ -51,13 +48,13 @@ export default function MenusAdmin() {
       price: '', 
       handling_fee: '',
       description: '', 
+      variants: '',
       image: '', 
       is_available: true 
     });
     setIsModalOpen(true);
   };
 
-  // Buka modal untuk edit menu
   const handleEdit = (product) => {
     setEditingId(product.id);
     setFormData({
@@ -66,13 +63,13 @@ export default function MenusAdmin() {
       price: product.price,
       handling_fee: product.handling_fee || '',
       description: product.description || '',
+      variants: product.variants || '',
       image: product.image,
       is_available: product.is_available
     });
     setIsModalOpen(true);
   };
 
-  // Simpan data (Create / Update)
   const handleSave = async (e) => {
     e.preventDefault();
 
@@ -82,6 +79,7 @@ export default function MenusAdmin() {
     submitData.append('price', formData.price);
     submitData.append('handling_fee', formData.handling_fee || 0);
     submitData.append('description', formData.description || '');
+    submitData.append('variants', formData.variants || '');
     submitData.append('is_available', formData.is_available ? 1 : 0);
 
     if (formData.image instanceof File) {
@@ -107,19 +105,18 @@ export default function MenusAdmin() {
     }
   };
 
-  // Hapus Menu
   const handleDelete = async (id) => {
     if (window.confirm('Yakin ingin menghapus menu ini?')) {
       try {
         await axios.delete(`/admin/products/${id}`);
         fetchData();
       } catch (error) {
-        alert('Gagal menghapus menu!');
+        const errorMessage = error.response?.data?.message || 'Gagal menghapus menu!';
+        alert(errorMessage);
       }
     }
   };
-
-  // Toggle status Tersedia / Habis
+  
   const toggleAvailability = async (product) => {
     try {
       await axios.put(`/admin/products/${product.id}`, {
@@ -128,6 +125,7 @@ export default function MenusAdmin() {
         price: product.price,
         handling_fee: product.handling_fee || 0,
         description: product.description || '',
+        variants: product.variants || '',
         is_available: !product.is_available ? 1 : 0
       });
       fetchData();
@@ -137,31 +135,25 @@ export default function MenusAdmin() {
     }
   };
 
-  // Filter pencarian teks nama menu
   const filteredProducts = products.filter(p =>
     p.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // MENGHILANGKAN KATEGORI GANDA PADA DROPDOWN FORM & TABS
   const uniqueCategories = Array.from(new Set(categories.map(c => c.name))).map(catName => {
     return categories.find(c => c.name === catName);
   }).filter(Boolean);
 
-  // KATEGORI YANG DITAMPILKAN BERDASARKAN TAB AKTIF
   const displayedCategories = selectedCategory === 'all'
     ? uniqueCategories
     : uniqueCategories.filter(c => String(c.id) === String(selectedCategory) || c.name === selectedCategory);
 
   return (
     <div className="flex flex-col h-full bg-slate-50 p-4 lg:p-6 font-sans">
-
-      {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
           <h2 className="text-2xl font-extrabold text-slate-800">Kelola Menu</h2>
           <p className="text-sm font-medium text-slate-500 mt-1">Tambah, ubah, atau hapus daftar menu kantin.</p>
         </div>
-
         <div className="flex gap-3">
           <div className="relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -177,7 +169,6 @@ export default function MenusAdmin() {
         </div>
       </div>
 
-      {/* TAB FILTER KATEGORI (KAPSUL NAVIGASI) */}
       <div className="bg-white p-2 rounded-2xl border border-slate-200/80 shadow-xs mb-6 overflow-x-auto flex items-center gap-2 scrollbar-none">
         <button
           onClick={() => setSelectedCategory('all')}
@@ -205,29 +196,23 @@ export default function MenusAdmin() {
         ))}
       </div>
 
-      {/* LIST MENU BERDASARKAN KATEGORI */}
       {loading ? (
         <div className="text-center py-10 text-slate-500 animate-pulse font-medium">Memuat data menu...</div>
       ) : (
         <div className="space-y-8">
           {displayedCategories.map(category => {
-            // Filter produk berdasarkan kategori dan urutkan HARGA TERMURAH ke TERMAHAL
             const categoryProducts = filteredProducts
               .filter(p => p.category_id === category.id || p.category?.name === category.name)
               .sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
 
-            // Jika kategori tidak memiliki produk yang cocok (atau hasil pencarian kosong), lewati
             if (categoryProducts.length === 0) return null;
 
             return (
               <div key={category.id} className="space-y-3">
-                {/* JUDUL KATEGORI HEADER (DENGAN ICON PANAH >) */}
                 <div className="flex items-center gap-1">
                   <h3 className="text-lg font-black text-slate-800 tracking-tight">{category.name}</h3>
                   <ChevronRight className="w-5 h-5 text-emerald-500 stroke-[3]" />
                 </div>
-
-                {/* GRID PRODUK DALAM KATEGORI TERSEBUT */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
                   {categoryProducts.map(product => (
                     <div key={product.id} className={`bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden flex flex-col transition-opacity ${!product.is_available && 'opacity-70 grayscale-50'}`}>
@@ -247,13 +232,9 @@ export default function MenusAdmin() {
                       <div className="p-4 flex-1 flex flex-col">
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{product.category?.name}</span>
                         <h3 className="font-bold text-slate-800 text-sm leading-tight mb-1">{product.name}</h3>
-                        
-                        {/* PREVIEW DESKRIPSI DI CARD */}
                         <p className="text-xs text-slate-400 line-clamp-2 mb-3 min-h-8">
                           {product.description || 'Tidak ada deskripsi'}
                         </p>
-
-                        {/* TAMPILAN HARGA & BIAYA KEMASAN */}
                         <div className="flex items-center justify-between mt-auto">
                           <span className="font-black text-emerald-600">Rp{Number(product.price).toLocaleString('id-ID')}</span>
                           {Number(product.handling_fee) > 0 && (
@@ -262,7 +243,6 @@ export default function MenusAdmin() {
                             </span>
                           )}
                         </div>
-
                         <div className="flex gap-2 mt-4 pt-3 border-t border-slate-100">
                           <button onClick={() => handleEdit(product)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-lg text-xs font-bold flex justify-center items-center gap-1 transition-colors cursor-pointer">
                             <Edit className="w-3 h-3" /> Edit
@@ -281,12 +261,12 @@ export default function MenusAdmin() {
         </div>
       )}
 
-      {/* MODAL FORM */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
-            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+          <div className="bg-white rounded-3xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in duration-200 no-scrollbar">
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 sticky top-0 z-10">
               <h3 className="font-bold text-slate-800 text-lg">{editingId ? 'Edit Menu' : 'Tambah Menu Baru'}</h3>
+              <button onClick={() => setIsModalOpen(false)} className="p-1 hover:bg-slate-200 rounded-full cursor-pointer transition-colors"><XCircle className="w-6 h-6 text-slate-400" /></button>
             </div>
 
             <form onSubmit={handleSave} className="p-5 space-y-4">
@@ -314,6 +294,18 @@ export default function MenusAdmin() {
                   <label className="block text-xs font-bold text-slate-500 mb-1">Biaya Kemasan (Rp)</label>
                   <input type="number" value={formData.handling_fee} onChange={e => setFormData({ ...formData, handling_fee: e.target.value })} placeholder="Cth: 500" className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
                 </div>
+              </div>
+
+              {/* INPUT BARU UNTUK VARIAN */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Varian Produk (Opsional - Pisahkan dgn koma)</label>
+                <input 
+                  type="text" 
+                  value={formData.variants} 
+                  onChange={e => setFormData({ ...formData, variants: e.target.value })} 
+                  placeholder="Contoh: Kari, Rendang, Soto, Keju" 
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" 
+                />
               </div>
 
               <div>
@@ -348,7 +340,6 @@ export default function MenusAdmin() {
           </div>
         </div>
       )}
-
     </div>
   );
 }
