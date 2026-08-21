@@ -37,29 +37,40 @@ class AdminProductController extends Controller
     public function store(Request $request)
     {
         try {
-            // Mapping nama field biaya kemasan jika dikirim sebagai packaging_fee
-            $handlingFee = $request->handling_fee ?? $request->packaging_fee ?? 0;
+            // 1. Ambil daftar semua kolom resmi yang ada di tabel 'products'
+            $columns = Schema::getColumnListing('products');
 
-            // Daftar data calon simpan
-            $inputData = [
-                'name'         => $request->name,
-                'price'        => $request->price,
-                'handling_fee' => $handlingFee,
-                'packaging_fee'=> $handlingFee,
-                'description'  => $request->description,
-                'variants'     => $request->variants,
-                'category_id'  => $request->category_id,
-            ];
+            // 2. Ambil seluruh input request dari frontend
+            $inputs = $request->except(['image', '_method', '_token']);
 
-            // FILTER: Hanya ambil data yang nama kolomnya BENAR-BENAR ADA di tabel 'products'
+            // Auto-mapping Biaya Kemasan (packaging_fee / handling_fee)
+            if (!isset($inputs['handling_fee']) && isset($inputs['packaging_fee'])) {
+                $inputs['handling_fee'] = $inputs['packaging_fee'];
+            }
+            if (!isset($inputs['packaging_fee']) && isset($inputs['handling_fee'])) {
+                $inputs['packaging_fee'] = $inputs['handling_fee'];
+            }
+
+            // Auto-mapping Status Ketersediaan (TERSEDIA/HABIS <-> is_available/is_active)
+            if (isset($inputs['status'])) {
+                $isAvail = ($inputs['status'] === 'TERSEDIA' || $inputs['status'] === '1' || $inputs['status'] === true || $inputs['status'] === 1);
+                $inputs['is_available'] = $isAvail ? 1 : 0;
+                $inputs['is_active']    = $isAvail ? 1 : 0;
+            } elseif (isset($inputs['is_available'])) {
+                $isAvail = filter_var($inputs['is_available'], FILTER_VALIDATE_BOOLEAN);
+                $inputs['status']    = $isAvail ? 'TERSEDIA' : 'HABIS';
+                $inputs['is_active'] = $isAvail ? 1 : 0;
+            }
+
+            // 3. Masukkan HANYA data yang nama kolomnya benar-benar ada di MySQL
             $data = [];
-            foreach ($inputData as $column => $value) {
-                if (Schema::hasColumn('products', $column) && $value !== null) {
-                    $data[$column] = $value;
+            foreach ($inputs as $key => $value) {
+                if (in_array($key, $columns) && $value !== null) {
+                    $data[$key] = $value;
                 }
             }
 
-            // Handling Upload Gambar
+            // 4. Handling Upload Gambar
             if ($request->hasFile('image')) {
                 $imagePath = $request->file('image')->store('products', 'public');
                 $data['image'] = url('storage/' . $imagePath);
@@ -88,25 +99,40 @@ class AdminProductController extends Controller
         try {
             $product = Product::findOrFail($id);
 
-            $handlingFee = $request->handling_fee ?? $request->packaging_fee ?? 0;
+            // 1. Ambil daftar semua kolom resmi yang ada di tabel 'products'
+            $columns = Schema::getColumnListing('products');
 
-            $inputData = [
-                'name'         => $request->name,
-                'price'        => $request->price,
-                'handling_fee' => $handlingFee,
-                'packaging_fee'=> $handlingFee,
-                'description'  => $request->description,
-                'variants'     => $request->variants,
-                'category_id'  => $request->category_id,
-            ];
+            // 2. Ambil seluruh input request dari frontend
+            $inputs = $request->except(['image', '_method', '_token']);
 
+            // Auto-mapping Biaya Kemasan (packaging_fee / handling_fee)
+            if (!isset($inputs['handling_fee']) && isset($inputs['packaging_fee'])) {
+                $inputs['handling_fee'] = $inputs['packaging_fee'];
+            }
+            if (!isset($inputs['packaging_fee']) && isset($inputs['handling_fee'])) {
+                $inputs['packaging_fee'] = $inputs['handling_fee'];
+            }
+
+            // Auto-mapping Status Ketersediaan (TERSEDIA/HABIS <-> is_available/is_active)
+            if (isset($inputs['status'])) {
+                $isAvail = ($inputs['status'] === 'TERSEDIA' || $inputs['status'] === '1' || $inputs['status'] === true || $inputs['status'] === 1);
+                $inputs['is_available'] = $isAvail ? 1 : 0;
+                $inputs['is_active']    = $isAvail ? 1 : 0;
+            } elseif (isset($inputs['is_available'])) {
+                $isAvail = filter_var($inputs['is_available'], FILTER_VALIDATE_BOOLEAN);
+                $inputs['status']    = $isAvail ? 'TERSEDIA' : 'HABIS';
+                $inputs['is_active'] = $isAvail ? 1 : 0;
+            }
+
+            // 3. Masukkan HANYA data yang nama kolomnya benar-benar ada di MySQL
             $data = [];
-            foreach ($inputData as $column => $value) {
-                if (Schema::hasColumn('products', $column) && $value !== null) {
-                    $data[$column] = $value;
+            foreach ($inputs as $key => $value) {
+                if (in_array($key, $columns) && $value !== null) {
+                    $data[$key] = $value;
                 }
             }
 
+            // 4. Handling Upload Gambar
             if ($request->hasFile('image')) {
                 if ($product->image && str_contains($product->image, 'storage/products/')) {
                     $oldPath = str_replace(url('storage/'), '', $product->image);
