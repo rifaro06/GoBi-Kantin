@@ -4,21 +4,21 @@ import { X, Plus, Minus } from 'lucide-react';
 export default function ProductModal({ product, onClose, onAddToCart }) {
     const [quantity, setQuantity] = useState(1);
     const [note, setNote] = useState('');
-    const [selectedVariant, setSelectedVariant] = useState('');
+    const [selectedVariant, setSelectedVariant] = useState(''); 
 
     useEffect(() => {
         if (product) {
             setQuantity(1);
             setNote('');
-            setSelectedVariants([]); 
+            setSelectedVariant(''); 
         }
     }, [product]);
 
     if (!product) return null;
 
     const handleAdd = () => {
-        // Langsung kirim 4 parameter dengan rapi tanpa variabel nganggur
-        onAddToCart(product, quantity, note, selectedVariants);
+        // Kirim varian tunggal (dikemas dalam array agar kompatibel dengan handler keranjang)
+        onAddToCart(product, quantity, note, selectedVariant ? [selectedVariant] : []);
     };
 
     const getImageUrl = (url) => {
@@ -35,11 +35,8 @@ export default function ProductModal({ product, onClose, onAddToCart }) {
         : [];
 
     const toggleVariant = (variant) => {
-        if (selectedVariants.includes(variant)) {
-            setSelectedVariants(selectedVariants.filter(v => v !== variant));
-        } else {
-            setSelectedVariants([...selectedVariants, variant]);
-        }
+        // Hanya memilih 1 varian. Jika tombol varian sama diklik lagi, pilihan dibatalkan.
+        setSelectedVariant(prev => prev === variant ? '' : variant);
     };
 
     return (
@@ -80,7 +77,7 @@ export default function ProductModal({ product, onClose, onAddToCart }) {
                             {quickVariants.length > 0 && (
                                 <>
                                     <label className="text-xs font-bold text-slate-700 block mb-2">
-                                        Pilihan / Varian (Opsional)
+                                        Pilihan / Varian (Pilih 1)
                                     </label>
                                     <div className="flex flex-wrap gap-2 mb-3">
                                         {quickVariants.map((variant, idx) => (
@@ -88,7 +85,7 @@ export default function ProductModal({ product, onClose, onAddToCart }) {
                                                 key={idx}
                                                 type="button"
                                                 onClick={() => toggleVariant(variant)}
-                                                className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${selectedVariants.includes(variant)
+                                                className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${selectedVariant === variant
                                                         ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
                                                         : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                                                     }`}
