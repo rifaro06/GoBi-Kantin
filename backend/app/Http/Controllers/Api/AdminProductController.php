@@ -8,6 +8,7 @@ use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Throwable;
 
 class AdminProductController extends Controller
@@ -36,36 +37,29 @@ class AdminProductController extends Controller
     public function store(Request $request)
     {
         try {
-            // 1. Auto mapping nama field jika frontend mengirim 'packaging_fee'
-            if (!$request->has('handling_fee') && $request->has('packaging_fee')) {
-                $request->merge(['handling_fee' => $request->packaging_fee]);
-            }
+            // Mapping nama field biaya kemasan jika dikirim sebagai packaging_fee
+            $handlingFee = $request->handling_fee ?? $request->packaging_fee ?? 0;
 
-            // 2. Validasi Input
-            $request->validate([
-                'name'         => 'required|string|max:255',
-                'price'        => 'required|numeric',
-                'category_id'  => 'nullable',
-                'handling_fee' => 'nullable|numeric|min:0',
-                'description'  => 'nullable|string',
-                'variants'     => 'nullable|string',
-                'image'        => 'nullable',
-            ]);
-
-            // 3. Susun data spesifik saja (mencegah SQL Error Mass Assignment)
-            $data = [
+            // Daftar data calon simpan
+            $inputData = [
                 'name'         => $request->name,
                 'price'        => $request->price,
-                'handling_fee' => $request->handling_fee ?? 0,
+                'handling_fee' => $handlingFee,
+                'packaging_fee'=> $handlingFee,
                 'description'  => $request->description,
                 'variants'     => $request->variants,
+                'category_id'  => $request->category_id,
             ];
 
-            if ($request->filled('category_id')) {
-                $data['category_id'] = $request->category_id;
+            // FILTER: Hanya ambil data yang nama kolomnya BENAR-BENAR ADA di tabel 'products'
+            $data = [];
+            foreach ($inputData as $column => $value) {
+                if (Schema::hasColumn('products', $column) && $value !== null) {
+                    $data[$column] = $value;
+                }
             }
 
-            // 4. Handling Upload Gambar
+            // Handling Upload Gambar
             if ($request->hasFile('image')) {
                 $imagePath = $request->file('image')->store('products', 'public');
                 $data['image'] = url('storage/' . $imagePath);
@@ -82,7 +76,6 @@ class AdminProductController extends Controller
             ], 201);
 
         } catch (Throwable $e) {
-            // Menampilkan error detail jika terjadi kesalahan server/SQL
             return response()->json([
                 'status'  => 'error',
                 'message' => 'Error Server: ' . $e->getMessage()
@@ -95,36 +88,26 @@ class AdminProductController extends Controller
         try {
             $product = Product::findOrFail($id);
 
-            // Auto mapping nama field jika frontend mengirim 'packaging_fee'
-            if (!$request->has('handling_fee') && $request->has('packaging_fee')) {
-                $request->merge(['handling_fee' => $request->packaging_fee]);
-            }
+            $handlingFee = $request->handling_fee ?? $request->packaging_fee ?? 0;
 
-            $request->validate([
-                'name'         => 'required|string|max:255',
-                'price'        => 'required|numeric',
-                'category_id'  => 'nullable',
-                'handling_fee' => 'nullable|numeric|min:0',
-                'description'  => 'nullable|string',
-                'variants'     => 'nullable|string',
-                'image'        => 'nullable',
-            ]);
-
-            $data = [
+            $inputData = [
                 'name'         => $request->name,
                 'price'        => $request->price,
-                'handling_fee' => $request->handling_fee ?? 0,
+                'handling_fee' => $handlingFee,
+                'packaging_fee'=> $handlingFee,
                 'description'  => $request->description,
                 'variants'     => $request->variants,
+                'category_id'  => $request->category_id,
             ];
 
-            if ($request->filled('category_id')) {
-                $data['category_id'] = $request->category_id;
+            $data = [];
+            foreach ($inputData as $column => $value) {
+                if (Schema::hasColumn('products', $column) && $value !== null) {
+                    $data[$column] = $value;
+                }
             }
 
-            // Upload Gambar baru jika ada file yang diunggah
             if ($request->hasFile('image')) {
-                // Hapus gambar lama dari storage jika bukan berupa URL luar
                 if ($product->image && str_contains($product->image, 'storage/products/')) {
                     $oldPath = str_replace(url('storage/'), '', $product->image);
                     Storage::disk('public')->delete($oldPath);
@@ -166,7 +149,7 @@ class AdminProductController extends Controller
 
             return response()->json([
                 'status'  => 'success',
-                'message' => 'Menu berhasil dihapus paksa!'
+                'message' => 'Menu berhasil dihapus!'
             ]);
 
         } catch (Throwable $e) {
